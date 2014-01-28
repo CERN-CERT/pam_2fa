@@ -59,8 +59,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
         retval = ldap_search_factors(pamh, cfg, username, &user_cfg);
     } else {
         //NO LDAP QUERY
-        //PAM_MODUTIL_DEF_PRIVS(privs);
         struct passwd *user_entry = NULL;
+        struct pam_2fa_privs p;
 
         user_entry = pam_modutil_getpwnam(pamh, username);
         if(!user_entry) {
@@ -77,10 +77,9 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 
         strncpy(user_cfg->gauth_login, username, GAUTH_LOGIN_LEN + 1);
 
-        // TODO: drop privs before reading user file
-        //pam_modutil_drop_privs(pamh, &p, user_entry);
+        pam_2fa_drop_priv(pamh, &p, user_entry);
         yk_load_user_file(pamh, cfg, user_entry, &user_cfg->yk_publicids);
-        //pam_modutil_regain_privs(pamh, &p);
+        pam_2fa_regain_priv(pamh, &p);
 
         retval = OK;
     }

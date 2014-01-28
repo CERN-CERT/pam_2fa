@@ -34,7 +34,7 @@ all: pam_2fa.so
 
 %.o: %.c pam_2fa.h
 
-pam_2fa.so: pam_2fa.c pam_2fa_ldap.o pam_2fa_gauth.o pam_2fa_sms.o pam_2fa_yk.o
+pam_2fa.so: pam_2fa.c pam_2fa_ldap.o pam_2fa_gauth.o pam_2fa_sms.o pam_2fa_yk.o pam_2fa_priv.o
 	$(CC) $(CFLAGS) -DDEBUG_PAM -DPAM_DEBUG -shared $(LDFLAGS) -o $@ $^
 
 install_all: install
