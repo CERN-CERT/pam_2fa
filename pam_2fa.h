@@ -105,12 +105,10 @@ typedef int (*auth_func) (pam_handle_t * pamh, user_config * user_cfg, module_co
 #define SMS_TEXT "Your authentication code is: "
 
 
-int converse(pam_handle_t * pamh, module_config *cfg, const char *text, int mode, char **resp);
+int ldap_search_factors(pam_handle_t *pamh, module_config * cfg, const char *username, user_config **user_ncfg);
 
-int ldap_search_factors(module_config * cfg, const char *username, user_config **user_cfg);
-
-int yk_get_publicid(char *buf, size_t *yk_id_pos, size_t *yk_id_len, char ***yk_publicids);
-int yk_load_user_file(module_config *cfg, const char *username, char ***user_publicids);
+int yk_load_user_file(pam_handle_t *pamh, module_config *cfg, struct passwd *user_entry, char ***user_publicids);
+int yk_get_publicid(pam_handle_t *pamh, char *buf, size_t *yk_id_pos, size_t *yk_id_len, char ***yk_publicids);
 void yk_free_publicids(char **publicids);
 
 int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);

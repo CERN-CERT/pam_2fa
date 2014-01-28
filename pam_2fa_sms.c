@@ -24,28 +24,18 @@ int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * 
     DBG(("Return status = %d", mail_status));
 
     if (retval != 0) {
-	syslog(LOG_ERR, "%s Failed to send authentication code by SMS!",
+	pam_syslog(pamh, LOG_ERR, "%s Failed to send authentication code by SMS!",
 	       LOG_PREFIX);
-	converse(pamh, cfg, "Failed to send authentication code by SMS!\n",
-		 PAM_ERROR_MSG, NULL);
+	pam_prompt(pamh, PAM_ERROR_MSG, NULL, "Failed to send authentication code by SMS!\n");
 	return (ERROR);
     }
 
-    retval = converse(pamh, cfg, SMS_TEXT_WAIT, PAM_TEXT_INFO, NULL);
-    if (retval != OK) {
-	syslog(LOG_INFO, "PAM converse error");
-	return (ERROR);
-    }
+    pam_prompt(pamh, PAM_TEXT_INFO, NULL, SMS_TEXT_WAIT);
+
     //GET USER INPUT
     retval = ERROR;
     for (trial = 0; retval != OK && trial < cfg->retry; ++trial) {
-	retval =
-	    converse(pamh, cfg, SMS_TEXT_INSERT_INPUT, PAM_PROMPT_ECHO_ON,
-		     &entered_code);
-	if (retval != OK) {
-	    syslog(LOG_INFO, "PAM converse error");
-	    return (ERROR);
-	}
+	pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &entered_code,SMS_TEXT_INSERT_INPUT);
 
 	if (entered_code) {
 	    DBG(("code entered = %s", entered_code));
@@ -63,7 +53,7 @@ int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * 
 		retval = ERROR;
 	    }
 	} else {
-	    syslog(LOG_ERR, "No user input!");
+	    pam_syslog(pamh, LOG_ERR, "No user input!");
 	    retval = ERROR;
 	}
     }

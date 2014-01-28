@@ -27,7 +27,7 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
     p = strrchr(cfg->gauth_ws_action, '/');
     if (!p || !*++p) {
         DBG(("Invalid WS action"));
-        syslog(LOG_ERR, "Invalid WS action: %s", cfg->gauth_ws_action);
+        pam_syslog(pamh, LOG_ERR, "Invalid WS action: %s", cfg->gauth_ws_action);
         goto done;
     }
     snprintf(soap_result_tag, 1024, "<%sResult>", p);
@@ -42,20 +42,20 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
     retval = curl_easy_setopt(curlh, CURLOPT_FAILONERROR, 1);
     if (retval != CURLE_OK) {
         DBG(("Unable to set CURL options"));
-        syslog(LOG_ERR, "Unable to set CURL options: %s", curl_error);
+        pam_syslog(pamh, LOG_ERR, "Unable to set CURL options: %s", curl_error);
         goto done;
     }
     retval = curl_easy_setopt(curlh, CURLOPT_ERRORBUFFER, curl_error);
     if (retval != CURLE_OK) {
         DBG(("Unable to set CURL options"));
-        syslog(LOG_ERR, "Unable to set CURL options: %s", curl_error);
+        pam_syslog(pamh, LOG_ERR, "Unable to set CURL options: %s", curl_error);
         goto done;
     }
     if (cfg->capath) {
         retval = curl_easy_setopt(curlh, CURLOPT_CAPATH, cfg->capath);
         if (retval != CURLE_OK) {
             DBG(("Unable to set CURL options"));
-            syslog(LOG_ERR, "Unable to set CURL options: %s", curl_error);
+            pam_syslog(pamh, LOG_ERR, "Unable to set CURL options: %s", curl_error);
             goto done;
         }
     }
@@ -63,38 +63,33 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
     retval = curl_easy_setopt(curlh, CURLOPT_HTTPHEADER, header_list);
     if (retval != CURLE_OK) {
         DBG(("Unable to set CURL options"));
-        syslog(LOG_ERR, "Unable to set CURL options: %s", curl_error);
+        pam_syslog(pamh, LOG_ERR, "Unable to set CURL options: %s", curl_error);
         goto done;
     }
     retval = curl_easy_setopt(curlh, CURLOPT_URL, cfg->gauth_ws_uri);
     if (retval != CURLE_OK) {
         DBG(("Unable to set CURL options"));
-        syslog(LOG_ERR, "Unable to set CURL options: %s", curl_error);
+        pam_syslog(pamh, LOG_ERR, "Unable to set CURL options: %s", curl_error);
         goto done;
     }
     retval = curl_easy_setopt(curlh, CURLOPT_WRITEFUNCTION, &writefunc_curl);
     if (retval != CURLE_OK) {
         DBG(("Unable to set CURL options"));
-        syslog(LOG_ERR, "Unable to set CURL options: %s", curl_error);
+        pam_syslog(pamh, LOG_ERR, "Unable to set CURL options: %s", curl_error);
         goto done;
     }
     retval = curl_easy_setopt(curlh, CURLOPT_WRITEDATA, &http_response);
     if (retval != CURLE_OK) {
         DBG(("Unable to set CURL options"));
-        syslog(LOG_ERR, "Unable to set CURL options: %s", curl_error);
+        pam_syslog(pamh, LOG_ERR, "Unable to set CURL options: %s", curl_error);
         goto done;
     }
 
     //GET USER INPUT
     retval = ERROR;
     for (trial = 0; retval != OK && trial < cfg->retry; ++trial) {
-        if(!otp) {
-            retval = converse(pamh, cfg, "OTP: ", PAM_PROMPT_ECHO_ON, &otp);
-            if (retval != OK) {
-                syslog(LOG_INFO, "PAM converse error");
-                goto done;
-            }
-        }
+        if(!otp)
+            pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &otp, "OTP: ");
 
         if (otp) {
             DBG(("OTP = %s", otp));
@@ -120,7 +115,7 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
             retval = curl_easy_setopt(curlh, CURLOPT_POSTFIELDS, http_request);
             if (retval != CURLE_OK) {
                 DBG(("Unable to set CURL POST request"));
-                syslog(LOG_ERR, "Unable to set CURL POST request: %s", curl_error);
+                pam_syslog(pamh, LOG_ERR, "Unable to set CURL POST request: %s", curl_error);
                 goto done;
             }
 
@@ -142,7 +137,7 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
             result = strstr(http_response.buffer, soap_result_tag);
             if (result == NULL) {
                 DBG(("Invalid SOAP response: %s", http_response.buffer));
-                syslog(LOG_ERR, "Invalid SOAP response: %s", http_response.buffer);
+                pam_syslog(pamh, LOG_ERR, "Invalid SOAP response: %s", http_response.buffer);
                 retval = ERROR;
                 goto done;
             }
@@ -153,7 +148,7 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
             else
   		retval = ERROR;
         } else {
-            syslog(LOG_INFO, "No user input!");
+            pam_syslog(pamh, LOG_INFO, "No user input!");
             retval = ERROR;
         }
     }

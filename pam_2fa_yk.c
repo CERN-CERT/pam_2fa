@@ -39,22 +39,17 @@ int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cf
     //GET USER INPUT
     retval = ERROR;
     for (trial = 0; retval != OK && trial < cfg->retry; ++trial) {
-        if(!otp) {
-	    retval = converse(pamh, cfg, "Yubikey: ", PAM_PROMPT_ECHO_ON, &otp);
-	    if (retval != OK) {
-	        syslog(LOG_INFO, "PAM converse error");
-	        return (ERROR);
-	    }
-	}
+        if(!otp)
+	    pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &otp, "Yubikey: ");
 
 	if (otp) {
 	    DBG(("Yubikey = %s", otp));
-	    syslog(LOG_DEBUG, "Yubikey OTP: %s (%zu)", otp, strlen(otp));
+	    pam_syslog(pamh, LOG_DEBUG, "Yubikey OTP: %s (%zu)", otp, strlen(otp));
 
 	    // VERIFY IF VALID INPUT !
 	    if (strlen(otp) != YK_OTP_LEN) {
 		DBG(("INCORRRECT code from user!"));
-	        syslog(LOG_INFO, "Yubikey OTP is incorrect: %s", otp);
+	        pam_syslog(pamh, LOG_INFO, "Yubikey OTP is incorrect: %s", otp);
 		retval = ERROR;
 		free(otp);
                 otp = NULL;
@@ -66,7 +61,7 @@ int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cf
 
 	    if (retval != 0) {
 		DBG(("INCORRECT yubikey public ID"));
-	        syslog(LOG_INFO, "Yubikey OTP doesn't match user public ids");
+	        pam_syslog(pamh, LOG_INFO, "Yubikey OTP doesn't match user public ids");
 		retval = ERROR;
 		free(otp);
                 otp = NULL;
@@ -84,12 +79,12 @@ int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cf
 		break;
 
 	    default:
-	        syslog(LOG_INFO, "Yubikey server response: %s (%d)", ykclient_strerror(retval), retval);
+	        pam_syslog(pamh, LOG_INFO, "Yubikey server response: %s (%d)", ykclient_strerror(retval), retval);
 		retval = ERROR;
 		break;
 	    }
 	} else {
-	    syslog(LOG_INFO, "No user input!");
+	    pam_syslog(pamh, LOG_INFO, "No user input!");
 	    retval = ERROR;
 	}
     }
@@ -102,40 +97,33 @@ int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cf
     return retval;
 }
 
-int yk_load_user_file(module_config *cfg, const char *username, char ***user_publicids)
+int yk_load_user_file(pam_handle_t *pamh, module_config *cfg, struct passwd *user_entry, char ***user_publicids)
 {
     int fd, retval;
     ssize_t bytes_read = 0;
     size_t yk_id_pos = 0, yk_id_len = 0;
-    char filename[1024], pw_buf[2048], buf[2048];
+    char filename[1024], buf[2048];
     char *buf_pos = NULL, *buf_next_line = NULL;
-    struct passwd pw_entry, *user_entry;
     struct stat st;
     char **yk_publicids = NULL;
     size_t buf_len = 0, buf_remaining_len = 0;
-
-    getpwnam_r(username, &pw_entry, pw_buf, 2048, &user_entry);
-    if(!user_entry) {
-        syslog(LOG_ERR, "Can't get passwd entry for '%s'", username);
-        return ERROR;
-    }
 
     snprintf(filename, 1024, "%s/%s", user_entry->pw_dir, cfg->yk_user_file);
 
     retval = stat(filename, &st);
     if(retval < 0) {
-        syslog(LOG_ERR, "Can't get stats of file '%s'", filename);
+        pam_syslog(pamh, LOG_ERR, "Can't get stats of file '%s'", filename);
         return ERROR;
     }
 
     if(!S_ISREG(st.st_mode)) {
-        syslog(LOG_ERR, "Not a regular file '%s'", filename);
+        pam_syslog(pamh, LOG_ERR, "Not a regular file '%s'", filename);
         return ERROR;
     }
 
     fd = open(filename, O_RDONLY);
     if(fd < 0) {
-        syslog(LOG_ERR, "Can't open file '%s'", filename);
+        pam_syslog(pamh, LOG_ERR, "Can't open file '%s'", filename);
         return ERROR;
     }
 
@@ -149,7 +137,7 @@ int yk_load_user_file(module_config *cfg, const char *username, char ***user_pub
 
         while((buf_next_line = strchr(buf_pos, '\n'))) {
             *(buf_next_line++) = 0;
-            retval = yk_get_publicid(buf_pos, &yk_id_pos, &yk_id_len, &yk_publicids);
+            retval = yk_get_publicid(pamh, buf_pos, &yk_id_pos, &yk_id_len, &yk_publicids);
             if(retval != OK) {
                 yk_free_publicids(yk_publicids);
                 return ERROR;
@@ -164,7 +152,7 @@ int yk_load_user_file(module_config *cfg, const char *username, char ***user_pub
     }
 
     if(buf_len) {
-        retval = yk_get_publicid(buf_pos, &yk_id_pos, &yk_id_len, &yk_publicids);
+        retval = yk_get_publicid(pamh, buf_pos, &yk_id_pos, &yk_id_len, &yk_publicids);
         if(retval != OK) {
             yk_free_publicids(yk_publicids);
             return ERROR;
@@ -186,7 +174,7 @@ void yk_free_publicids(char **publicids)
     }
 }
 
-int yk_get_publicid(char *buf, size_t *yk_id_pos, size_t *yk_id_len, char ***yk_publicids)
+int yk_get_publicid(pam_handle_t *pamh, char *buf, size_t *yk_id_pos, size_t *yk_id_len, char ***yk_publicids)
 {
     if(buf[0] != '#') {
         if(strlen(buf) >= YK_PUBLICID_LEN &&
@@ -214,7 +202,7 @@ int yk_get_publicid(char *buf, size_t *yk_id_pos, size_t *yk_id_len, char ***yk_
             (*yk_publicids)[++*yk_id_pos] = NULL;
 
         } else {
-            syslog(LOG_WARNING, "Invalid yubikey public id: %s", buf);
+            pam_syslog(pamh, LOG_WARNING, "Invalid yubikey public id: %s", buf);
         }
     }
 

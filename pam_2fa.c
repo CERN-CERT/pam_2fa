@@ -12,37 +12,6 @@ void __module_unload(void) __attribute__((destructor));
 
 static int parse_config(int argc, const char **argv, module_config **cfg);
 
-//PRINT MESSAGE TO THE USER AND ASKING INPUT (IF SPECIFIED IN MSG_STYLE )
-int converse(pam_handle_t * pamh, module_config *cfg, const char *text, int mode, char **resp)
-{
-    struct pam_conv *conv = NULL;
-    struct pam_message msg = { .msg_style = mode, .msg = text };
-    const struct pam_message *pmsg =  &msg;
-    struct pam_response *response = NULL;
-    int retval;
-
-    retval = pam_get_item(pamh, PAM_CONV, (void *) &conv);
-    if (retval != PAM_SUCCESS) {
-	DBG(("Could not get the pam item (PAM_CONV)"));
-	return ERROR;
-    }
-
-    retval = conv->conv(1, &pmsg, &response, conv->appdata_ptr);
-
-    if (retval != PAM_SUCCESS || response == NULL) {
-	DBG(("Could not send pam conv message"));
-	return (ERROR);
-    }
-
-    if (resp)
-	*resp = response->resp;
-    else if (response->resp)
-	free(response->resp);
-
-    free(response);
-    return (OK);
-}
-
 PAM_EXTERN int pam_sm_setcred(pam_handle_t * pamh, int flags, int argc,
 			      const char **argv)
 {
@@ -56,7 +25,6 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 {
     module_config *cfg = NULL;
     user_config *user_cfg = NULL;
-    char msg[512];
     int retval;
     size_t resp_len = 0;
     char *resp = NULL, *otp = NULL;
@@ -69,9 +37,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     //CHECK PAM CONFIGURATION
     if (retval == CONFIG_ERROR) {
         DBG(("Invalid configuration"));
-	syslog(LOG_ERR, "Invalid parameters to pam_2fa module");
-	converse(pamh, cfg, "Sorry, 2FA Pam Module is misconfigured, please contact admins!\n",
-		 PAM_ERROR_MSG, NULL);
+	pam_syslog(pamh, LOG_ERR, "Invalid parameters to pam_2fa module");
+	pam_prompt(pamh, PAM_ERROR_MSG, NULL, "Sorry, 2FA Pam Module is misconfigured, please contact admins!\n");
 
 	retval = PAM_AUTH_ERR;
 	goto done;
@@ -89,9 +56,19 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 
     if (cfg->ldap_enabled && strcmp(username, ROOT_USER)) {
         //GET 2nd FACTORS FROM LDAP
-        retval = ldap_search_factors(cfg, username, &user_cfg);
+        retval = ldap_search_factors(pamh, cfg, username, &user_cfg);
     } else {
         //NO LDAP QUERY
+        //PAM_MODUTIL_DEF_PRIVS(privs);
+        struct passwd *user_entry = NULL;
+
+        user_entry = pam_modutil_getpwnam(pamh, username);
+        if(!user_entry) {
+            pam_syslog(pamh, LOG_ERR, "Can't get passwd entry for '%s'", username);
+            retval = PAM_AUTH_ERR;
+            goto done;
+        }
+
         user_cfg = (user_config *) calloc(1, sizeof(user_config));
         if(!user_cfg) {
 	    retval = PAM_AUTH_ERR;
@@ -101,27 +78,22 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
         strncpy(user_cfg->gauth_login, username, GAUTH_LOGIN_LEN + 1);
 
         // TODO: drop privs before reading user file
-        yk_load_user_file(cfg, username, &user_cfg->yk_publicids);
+        //pam_modutil_drop_privs(pamh, &p, user_entry);
+        yk_load_user_file(pamh, cfg, user_entry, &user_cfg->yk_publicids);
+        //pam_modutil_regain_privs(pamh, &p);
 
         retval = OK;
     }
 
     if (retval != OK) {
-	syslog(LOG_INFO, "Unable to get 2nd factors for user '%s'", username);
-	converse(pamh, cfg, "Unable to get 2nd factors",
-		 PAM_ERROR_MSG, NULL);
+	pam_syslog(pamh, LOG_INFO, "Unable to get 2nd factors for user '%s'", username);
+	pam_prompt(pamh, PAM_ERROR_MSG, NULL, "Unable to get 2nd factors for user '%s'", username);
 	retval = PAM_AUTH_ERR;
 	goto done;
     }
 
     //SHOW THE SELECTION MENU
-    snprintf(msg, 512, "Login for %s:\n", username);
-    retval = converse(pamh, cfg, msg, PAM_TEXT_INFO, NULL);
-    if (retval != OK) {
-        DBG(("PAM converse error"));
-	retval = PAM_AUTH_ERR;
-	goto done;
-    }
+    pam_prompt(pamh, PAM_TEXT_INFO, NULL, "Login for %s:\n", username);
 
     auth_func menu_functions[3];
     int menu_len = 0;
@@ -130,47 +102,23 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 	++menu_len;
 	menu_functions[menu_len] = &gauth_auth_func;
         gauth_ok = 1;
-	snprintf(msg, 512, "        %d. Google Authenticator", menu_len);
-	retval = converse(pamh, cfg, msg, PAM_TEXT_INFO, NULL);
-	if (retval != OK) {
-	    DBG(("PAM converse error"));
-	    retval = PAM_AUTH_ERR;
-	    goto done;
-	}
+	pam_prompt(pamh, PAM_TEXT_INFO, NULL, "        %d. Google Authenticator", menu_len);
     }
     if (cfg->sms_enabled && user_cfg->sms_mobile) {
 	++menu_len;
 	menu_functions[menu_len] = &sms_auth_func;
         sms_ok = 1;
-	snprintf(msg, 512, "        %d. SMS OTP", menu_len);
-	retval = converse(pamh, cfg, msg, PAM_TEXT_INFO, NULL);
-	if (retval != OK) {
-	    DBG(("PAM converse error"));
-	    retval = PAM_AUTH_ERR;
-	    goto done;
-	}
+	pam_prompt(pamh, PAM_TEXT_INFO, NULL,  "        %d. SMS OTP", menu_len);
     }
     if (cfg->yk_enabled && user_cfg->yk_publicids) {
 	++menu_len;
 	menu_functions[menu_len] = &yk_auth_func;
         yk_ok = 1;
-	snprintf(msg, 512, "        %d. Yubikey", menu_len);
-	retval = converse(pamh, cfg, msg, PAM_TEXT_INFO, NULL);
-	if (retval != OK) {
-	    DBG(("PAM converse error"));
-	    retval = PAM_AUTH_ERR;
-	    goto done;
-	}
+	pam_prompt(pamh, PAM_TEXT_INFO, NULL, "        %d. Yubikey", menu_len);
     }
 
     while (!selected_auth_func) {
-	snprintf(msg, 512, "\nOption (1-%d): ", menu_len);
-	converse(pamh, cfg, msg, PAM_PROMPT_ECHO_ON, &resp);
-	if (retval != OK) {
-	    DBG(("PAM converse error"));
-	    retval = PAM_AUTH_ERR;
-	    goto done;
-	}
+	pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &resp, "\nOption (1-%d): ", menu_len);
 
         resp_len = strlen(resp);
         if(yk_ok && resp_len == YK_OTP_LEN) {
@@ -180,7 +128,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
             selected_auth_func = &gauth_auth_func;
             otp = resp;
         } else if(resp_len != 1 || resp[0] < '1' || resp[0] > menu_len + '0') {
-            converse(pamh, cfg, "Wrong value", PAM_ERROR_MSG, NULL);
+            pam_prompt(pamh, PAM_ERROR_MSG, NULL, "Wrong value");
 	} else {
 	    selected_auth_func = menu_functions[resp[0] - '0'];
         }
@@ -371,14 +319,10 @@ void free_user_config(user_config *user_cfg)
 // Initialize curl when loading the shared library
 void __module_load(void)
 {
-    openlog(LOG_PREFIX, LOG_CONS | LOG_PID | LOG_NDELAY, LOG_AUTHPRIV);
     curl_global_init(CURL_GLOBAL_ALL);
-    syslog(LOG_INFO, "Loaded");
 }
 
 void __module_unload(void)
 {
     curl_global_cleanup();
-    syslog(LOG_INFO, "Unloaded");
-    closelog();
 }

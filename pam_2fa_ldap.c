@@ -2,7 +2,7 @@
 
 #include "pam_2fa.h"
 
-int ldap_search_factors(module_config * cfg, const char *username, user_config **user_ncfg)
+int ldap_search_factors(pam_handle_t *pamh, module_config * cfg, const char *username, user_config **user_ncfg)
 {
     user_config *user_cfg = NULL;
     LDAP *ld = NULL;
@@ -25,7 +25,7 @@ int ldap_search_factors(module_config * cfg, const char *username, user_config *
 
     if (status != LDAP_SUCCESS) {
 	DBG(("LDAP error: %s", ldap_err2string(status)));
-	syslog(LOG_ERR, "Unable to connect to LDAP server");
+	pam_syslog(pamh, LOG_ERR, "Unable to connect to LDAP server");
 	retval = ERROR_CONNECTION_LDAP_SERVER;
 	goto done;
     }
@@ -36,7 +36,7 @@ int ldap_search_factors(module_config * cfg, const char *username, user_config *
 
     if (status != LDAP_SUCCESS) {
 	DBG(("LDAP error: %s", ldap_err2string(status)));
-	syslog(LOG_ERR, "Could not bind to LDAP server: %s", ldap_err2string(status));
+	pam_syslog(pamh, LOG_ERR, "Could not bind to LDAP server: %s", ldap_err2string(status));
 	retval = ERROR_BINDING_LDAP_SERVER;
 	goto done;
     }
@@ -47,7 +47,7 @@ int ldap_search_factors(module_config * cfg, const char *username, user_config *
 
     if (status != LDAP_SUCCESS) {
 	DBG(("LDAP error: %s", ldap_err2string(status)));
-	syslog(LOG_ERR, "Could not search in LDAP server: %s", ldap_err2string(status));
+	pam_syslog(pamh, LOG_ERR, "Could not search in LDAP server: %s", ldap_err2string(status));
 	retval = ERROR_SEARCH_LDAP;
 	goto done;
     }
@@ -88,7 +88,7 @@ int ldap_search_factors(module_config * cfg, const char *username, user_config *
 		}
 	    } else if (!strncmp(v, cfg->yk_prefix, cfg->yk_prefix_len)) {
 		if (strlen(v + cfg->yk_prefix_len) == YK_PUBLICID_LEN) {
-                    retval = yk_get_publicid(v + cfg->yk_prefix_len, &yk_id_pos, &yk_id_len, &user_cfg->yk_publicids);
+                    retval = yk_get_publicid(pamh, v + cfg->yk_prefix_len, &yk_id_pos, &yk_id_len, &user_cfg->yk_publicids);
                     if(retval != OK) {
                         retval = ERROR;
                         goto done;
@@ -104,7 +104,7 @@ int ldap_search_factors(module_config * cfg, const char *username, user_config *
 
     if (retval != OK) {
         DBG(("Failed LDAP search"));
-	syslog(LOG_INFO, "Unable to look for 2nd factors for user '%s'",
+	pam_syslog(pamh, LOG_INFO, "Unable to look for 2nd factors for user '%s'",
 	       username);
 	goto done;
     }
