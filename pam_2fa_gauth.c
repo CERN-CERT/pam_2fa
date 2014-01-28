@@ -105,6 +105,7 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
                 retval = ERROR;
                 free(otp);
                 otp = NULL;
+                continue;
             }
 
             snprintf(http_request, HTTP_BUF_LEN, SOAP_REQUEST_TEMPL, user_cfg->gauth_login, otp);

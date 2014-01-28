@@ -20,6 +20,7 @@ int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * 
     snprintf(txt, 2048, "%s%s", cfg->sms_text, code);
 
     DBG(("Mail [%s] %s: %s", dst, cfg->sms_subject, txt));
+    pam_syslog(pamh, LOG_DEBUG, "Sending SMS to %s", dst);
     retval = send_mail(dst, txt, cfg);
     DBG(("Return status = %d", mail_status));
 
@@ -42,8 +43,8 @@ int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * 
 
 	    // VERIFY IF VALID INPUT !
 	    retval = strncmp(code, entered_code, cfg->otp_length + 1);
-	    bzero(entered_code, cfg->otp_length + 1);
 	    free(entered_code);
+            entered_code = NULL;
 
 	    if (retval == 0) {
 		DBG(("Correct code from user"));

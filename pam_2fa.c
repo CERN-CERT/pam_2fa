@@ -98,13 +98,13 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     auth_func menu_functions[3];
     int menu_len = 0;
 
-    if (cfg->gauth_enabled && user_cfg->gauth_login) {
+    if (cfg->gauth_enabled && user_cfg->gauth_login[0]) {
 	++menu_len;
 	menu_functions[menu_len] = &gauth_auth_func;
         gauth_ok = 1;
 	pam_prompt(pamh, PAM_TEXT_INFO, NULL, "        %d. Google Authenticator", menu_len);
     }
-    if (cfg->sms_enabled && user_cfg->sms_mobile) {
+    if (cfg->sms_enabled && user_cfg->sms_mobile[0]) {
 	++menu_len;
 	menu_functions[menu_len] = &sms_auth_func;
         sms_ok = 1;
@@ -127,10 +127,10 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
         } else if(gauth_ok && resp_len == cfg->otp_length) {
             selected_auth_func = &gauth_auth_func;
             otp = resp;
-        } else if(resp_len != 1 || resp[0] < '1' || resp[0] > menu_len + '0') {
-            pam_prompt(pamh, PAM_ERROR_MSG, NULL, "Wrong value");
-	} else {
+        } else if(resp_len == 1 && resp[0] >= '1' && resp[0] <= menu_len + '0') {
 	    selected_auth_func = menu_functions[resp[0] - '0'];
+	} else {
+            pam_prompt(pamh, PAM_ERROR_MSG, NULL, "Wrong value");
         }
 
 	if (resp != NULL) {

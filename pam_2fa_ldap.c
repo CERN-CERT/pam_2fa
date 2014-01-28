@@ -111,16 +111,16 @@ int ldap_search_factors(pam_handle_t *pamh, module_config * cfg, const char *use
     //CLEAR...
   done:
 
-    if (result != NULL)
-	ldap_msgfree(result);
-    if (ld != NULL)
-	ldap_unbind_ext(ld, NULL, NULL);
-    if (vals != NULL)
-	ldap_value_free_len(vals);
     if (a != NULL)
 	ldap_memfree(a);
     if (ber != NULL)
 	ber_free(ber, 0);
+    if (vals != NULL)
+	ldap_value_free_len(vals);
+    if (result != NULL)
+	ldap_msgfree(result);
+    if (ld != NULL)
+	ldap_unbind_ext(ld, NULL, NULL);
     if (retval != OK) {
         free_user_config(user_cfg);
         *user_ncfg = NULL;
