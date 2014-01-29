@@ -100,9 +100,6 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 	goto done;
     }
 
-    //SHOW THE SELECTION MENU
-    pam_prompt(pamh, PAM_TEXT_INFO, NULL, "Login for %s:\n", username);
-
     auth_func menu_functions[3];
     int menu_len = 0;
 
@@ -111,7 +108,6 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 	++menu_len;
 	menu_functions[menu_len] = &gauth_auth_func;
         gauth_ok = 1;
-	pam_prompt(pamh, PAM_TEXT_INFO, NULL, "        %d. Google Authenticator", menu_len);
 #else
 	DBG(("GAuth configured, but CURL not compiled (should never happen!)"));
 #endif
@@ -120,40 +116,60 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 	++menu_len;
 	menu_functions[menu_len] = &sms_auth_func;
         sms_ok = 1;
-	pam_prompt(pamh, PAM_TEXT_INFO, NULL,  "        %d. SMS OTP", menu_len);
     }
     if (cfg->yk_enabled && user_cfg->yk_publicids) {
 #ifdef HAVE_YKCLIENT
 	++menu_len;
 	menu_functions[menu_len] = &yk_auth_func;
         yk_ok = 1;
-	pam_prompt(pamh, PAM_TEXT_INFO, NULL, "        %d. Yubikey", menu_len);
 #else
 	DBG(("Yubikey configured, but ykclient not compiled (should never happen!)"));
 #endif
     }
 
-    while (!selected_auth_func) {
-	pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &resp, "\nOption (1-%d): ", menu_len);
+    if(menu_len > 1) {
+        //SHOW THE SELECTION MENU
+        int i = 0;
 
-        resp_len = strlen(resp);
-        if(yk_ok && resp_len == YK_OTP_LEN) {
-            selected_auth_func = &yk_auth_func;
-            otp = resp;
-        } else if(gauth_ok && resp_len == cfg->otp_length) {
-            selected_auth_func = &gauth_auth_func;
-            otp = resp;
-        } else if(resp_len == 1 && resp[0] >= '1' && resp[0] <= menu_len + '0') {
-	    selected_auth_func = menu_functions[resp[0] - '0'];
-	} else {
-            pam_prompt(pamh, PAM_ERROR_MSG, NULL, "Wrong value");
+        pam_prompt(pamh, PAM_TEXT_INFO, NULL, "Login for %s:\n", username);
+
+        if(gauth_ok)
+	    pam_prompt(pamh, PAM_TEXT_INFO, NULL, "        %d. Google Authenticator", i++);
+        if(sms_ok)
+	    pam_prompt(pamh, PAM_TEXT_INFO, NULL,  "        %d. SMS OTP", i++);
+        if(yk_ok)
+	    pam_prompt(pamh, PAM_TEXT_INFO, NULL, "        %d. Yubikey", i);
+    
+        while (!selected_auth_func) {
+            pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &resp, "\nOption (1-%d): ", menu_len);
+    
+            resp_len = strlen(resp);
+            if(yk_ok && resp_len == YK_OTP_LEN) {
+                selected_auth_func = &yk_auth_func;
+                otp = resp;
+            } else if(gauth_ok && resp_len == cfg->otp_length) {
+                selected_auth_func = &gauth_auth_func;
+                otp = resp;
+            } else if(resp_len == 1 && resp[0] >= '1' && resp[0] <= menu_len + '0') {
+                selected_auth_func = menu_functions[resp[0] - '0'];
+            } else {
+                pam_prompt(pamh, PAM_ERROR_MSG, NULL, "Wrong value");
+            }
+    
+            if (resp != NULL) {
+                if(!otp) free(resp);
+                resp = NULL;
+            }
         }
-
-	if (resp != NULL) {
-	    if(!otp) free(resp);
-	    resp = NULL;
-	}
+    } else if(menu_len == 1) {
+         selected_auth_func = menu_functions[0];
+    } else {
+	pam_syslog(pamh, LOG_INFO, "No supported 2nd factor for user '%s'", username);
+	pam_prompt(pamh, PAM_ERROR_MSG, NULL, "No supported 2nd factors for user '%s'", username);
+	retval = PAM_AUTH_ERR;
+	goto done;
     }
+
 
     //CALL THE CORRESPONDING AUTHENTICATION METHOD
     retval = selected_auth_func(pamh, user_cfg, cfg, otp);
