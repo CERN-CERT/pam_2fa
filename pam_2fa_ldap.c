@@ -1,3 +1,5 @@
+#ifdef HAVE_LDAP
+
 #include <ldap.h>
 
 #include "pam_2fa.h"
@@ -130,3 +132,5 @@ int ldap_search_factors(pam_handle_t *pamh, module_config * cfg, const char *use
     *user_ncfg = user_cfg;
     return retval;
 }
+
+#endif

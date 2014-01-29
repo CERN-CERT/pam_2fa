@@ -1,3 +1,5 @@
+#ifdef HAVE_YKCLIENT
+
 #include <ykclient.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -208,3 +210,5 @@ int yk_get_publicid(pam_handle_t *pamh, char *buf, size_t *yk_id_pos, size_t *yk
 
     return OK;   
 }
+
+#endif

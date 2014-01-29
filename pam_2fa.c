@@ -55,8 +55,12 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     DBG(("username = %s", username));
 
     if (cfg->ldap_enabled && strcmp(username, ROOT_USER)) {
+#ifdef HAVE_LDAP
         //GET 2nd FACTORS FROM LDAP
         retval = ldap_search_factors(pamh, cfg, username, &user_cfg);
+#else
+	DBG(("LDAP configured, but not compiled (should never happen!)"));
+#endif
     } else {
         //NO LDAP QUERY
         struct passwd *user_entry = NULL;
@@ -75,11 +79,16 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
             goto done;
         }
 
-        strncpy(user_cfg->gauth_login, username, GAUTH_LOGIN_LEN + 1);
+#ifdef HAVE_CURL
+        if(cfg->gauth_enabled)
+            strncpy(user_cfg->gauth_login, username, GAUTH_LOGIN_LEN + 1);
+#endif
 
+#ifdef HAVE_YKCLIENT
         pam_2fa_drop_priv(pamh, &p, user_entry);
         yk_load_user_file(pamh, cfg, user_entry, &user_cfg->yk_publicids);
         pam_2fa_regain_priv(pamh, &p);
+#endif
 
         retval = OK;
     }
@@ -98,10 +107,14 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     int menu_len = 0;
 
     if (cfg->gauth_enabled && user_cfg->gauth_login[0]) {
+#ifdef HAVE_CURL
 	++menu_len;
 	menu_functions[menu_len] = &gauth_auth_func;
         gauth_ok = 1;
 	pam_prompt(pamh, PAM_TEXT_INFO, NULL, "        %d. Google Authenticator", menu_len);
+#else
+	DBG(("GAuth configured, but CURL not compiled (should never happen!)"));
+#endif
     }
     if (cfg->sms_enabled && user_cfg->sms_mobile[0]) {
 	++menu_len;
@@ -110,10 +123,14 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 	pam_prompt(pamh, PAM_TEXT_INFO, NULL,  "        %d. SMS OTP", menu_len);
     }
     if (cfg->yk_enabled && user_cfg->yk_publicids) {
+#ifdef HAVE_YKCLIENT
 	++menu_len;
 	menu_functions[menu_len] = &yk_auth_func;
         yk_ok = 1;
 	pam_prompt(pamh, PAM_TEXT_INFO, NULL, "        %d. Yubikey", menu_len);
+#else
+	DBG(("Yubikey configured, but ykclient not compiled (should never happen!)"));
+#endif
     }
 
     while (!selected_auth_func) {
@@ -163,68 +180,77 @@ static int parse_config(int argc, const char **argv, module_config **ncfg)
 	if (strcmp(argv[i], "debug") == 0)
 	    cfg->debug = 1;
 
-	if (strncmp(argv[i], "max_retry=", 10) == 0) {
+	else if (strncmp(argv[i], "max_retry=", 10) == 0) {
 	    sscanf(argv[i], "max_retry=%d", &cfg->retry);
 	    if (cfg->retry < MAX_RETRY)
 		cfg->retry = MAX_RETRY;
 	}
 
-	if (strncmp(argv[i], "capath=", 7) == 0)
+	else if (strncmp(argv[i], "capath=", 7) == 0)
 	    cfg->capath = strdup(argv[i] + 7);
 
-	if (strncmp(argv[i], "otp_length=", 11) == 0) {
+	else if (strncmp(argv[i], "otp_length=", 11) == 0) {
 	    sscanf(argv[i], "otp_length=%zu", &cfg->otp_length);
 	    if (cfg->otp_length < OTP_LENGTH)
 		cfg->otp_length = OTP_LENGTH;
 	}
 
-	if (strncmp(argv[i], "ldap_uri=", 9) == 0)
+#ifdef HAVE_LDAP
+	else if (strncmp(argv[i], "ldap_uri=", 9) == 0)
 	    cfg->ldap_uri = strdup(argv[i] + 9);
 
-	if (strncmp(argv[i], "ldap_attr=", 10) == 0)
+	else if (strncmp(argv[i], "ldap_attr=", 10) == 0)
 	    cfg->ldap_attr = strdup(argv[i] + 10);
 
-	if (strncmp(argv[i], "ldap_basedn=", 12) == 0)
+	else if (strncmp(argv[i], "ldap_basedn=", 12) == 0)
 	    cfg->ldap_basedn = strdup(argv[i] + 12);
+#endif
 
-	if (strncmp(argv[i], "gauth_prefix=", 13) == 0)
+#ifdef HAVE_CURL
+	else if (strncmp(argv[i], "gauth_prefix=", 13) == 0)
 	    cfg->gauth_prefix = strdup(argv[i] + 13);
 
-	if (strncmp(argv[i], "gauth_ws_uri=", 13) == 0)
+	else if (strncmp(argv[i], "gauth_ws_uri=", 13) == 0)
 	    cfg->gauth_ws_uri = strdup(argv[i] + 13);
 
-	if (strncmp(argv[i], "gauth_ws_action=", 16) == 0)
+	else if (strncmp(argv[i], "gauth_ws_action=", 16) == 0)
 	    cfg->gauth_ws_action = strdup(argv[i] + 16);
+#endif
 
-	if (strncmp(argv[i], "sms_prefix=", 11) == 0)
+	else if (strncmp(argv[i], "sms_prefix=", 11) == 0)
 	    cfg->sms_prefix = strdup(argv[i] + 11);
 
-	if (strncmp(argv[i], "sms_gateway=", 12) == 0)
+	else if (strncmp(argv[i], "sms_gateway=", 12) == 0)
 	    cfg->sms_gateway = strdup(argv[i] + 12);
 
-	if (strncmp(argv[i], "sms_subject=", 12) == 0)
+	else if (strncmp(argv[i], "sms_subject=", 12) == 0)
 	    cfg->sms_subject = strdup(argv[i] + 12);
 
-	if (strncmp(argv[i], "sms_text=", 9) == 0)
+	else if (strncmp(argv[i], "sms_text=", 9) == 0)
 	    cfg->sms_text = strdup(argv[i] + 9);
 
-	if (strncmp(argv[i], "smtp_server=", 12) == 0)
+	else if (strncmp(argv[i], "smtp_server=", 12) == 0)
 	    cfg->smtp_server = strdup(argv[i] + 12);
 
-	if (strncmp(argv[i], "yk_prefix=", 10) == 0)
+#ifdef HAVE_YKCLIENT
+	else if (strncmp(argv[i], "yk_prefix=", 10) == 0)
 	    cfg->yk_prefix = strdup(argv[i] + 10);
 
-	if (strncmp(argv[i], "yk_uri=", 7) == 0)
+	else if (strncmp(argv[i], "yk_uri=", 7) == 0)
 	    cfg->yk_uri = strdup(argv[i] + 7);
 
-	if (strncmp(argv[i], "yk_id=", 6) == 0)
+	else if (strncmp(argv[i], "yk_id=", 6) == 0)
 	    sscanf(argv[i], "yk_id=%d", &cfg->yk_id);
 
-	if (strncmp(argv[i], "yk_key=", 7) == 0)
+	else if (strncmp(argv[i], "yk_key=", 7) == 0)
 	    cfg->yk_key = strdup(argv[i] + 7);
 
-	if (strncmp(argv[i], "yk_user_file=", 13) == 0)
+	else if (strncmp(argv[i], "yk_user_file=", 13) == 0)
 	    cfg->yk_user_file = strdup(argv[i] + 13);
+#endif
+
+        else
+            return CONFIG_ERROR;
     }
 
     //DEFAULT VALUES
@@ -279,6 +305,9 @@ static int parse_config(int argc, const char **argv, module_config **ncfg)
     DBG(("yk_id => %s",           cfg->yk_id));
     DBG(("yk_key => %s",          cfg->yk_key));
     DBG(("yk_user_file => %s",    cfg->yk_user_file));
+
+    if(!cfg->gauth_enabled && !cfg->sms_enabled && !cfg->yk_enabled)
+        return CONFIG_ERROR;
 
     *ncfg = cfg;
     return OK;

@@ -1,8 +1,9 @@
 #ifndef _PAM_2FA_H_
 #define _PAM_2FA_H_
 
-// These #defines must be present according to PAM documentation
-#define PAM_SM_AUTH
+#ifdef HAVE_CONFIG_H
+    #include "config.h"
+#endif
 
 #include <ctype.h>
 #include <stdio.h>
@@ -11,6 +12,9 @@
 #include <syslog.h>
 #include <unistd.h>
 #include <pwd.h>
+
+// These #defines must be present according to PAM documentation
+#define PAM_SM_AUTH
 
 #include <security/pam_appl.h>	//to be correctly init, define it before including pam_modules.h
 #include <security/pam_modules.h>
@@ -115,15 +119,23 @@ typedef int (*auth_func) (pam_handle_t * pamh, user_config * user_cfg, module_co
 int pam_2fa_drop_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struct passwd *pw);
 int pam_2fa_regain_priv(pam_handle_t *pamh, struct pam_2fa_privs *p);
 
+#ifdef HAVE_LDAP
 int ldap_search_factors(pam_handle_t *pamh, module_config * cfg, const char *username, user_config **user_ncfg);
+#endif
 
+#ifdef HAVE_CURL
+int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
+#endif
+
+#ifdef HAVE_YKCLIENT
 int yk_load_user_file(pam_handle_t *pamh, module_config *cfg, struct passwd *user_entry, char ***user_publicids);
 int yk_get_publicid(pam_handle_t *pamh, char *buf, size_t *yk_id_pos, size_t *yk_id_len, char ***yk_publicids);
 void yk_free_publicids(char **publicids);
 
-int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
-int sms_auth_func   (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
 int yk_auth_func    (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
+#endif
+
+int sms_auth_func   (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
 
 void free_config(module_config *cfg);
 void free_user_config(user_config *user_cfg);

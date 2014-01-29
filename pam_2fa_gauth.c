@@ -1,3 +1,5 @@
+#ifdef HAVE_CURL
+
 #include <curl/curl.h>
 
 #include "pam_2fa.h"
@@ -178,3 +180,5 @@ static size_t writefunc_curl (char *ptr, size_t size, size_t nmemb, void *userda
 
     return handled;
 }
+
+#endif
