@@ -247,9 +247,6 @@ static int parse_config(pam_handle_t *pamh, int argc, const char **argv, module_
 	else if (strncmp(argv[i], "sms_text=", 9) == 0)
 	    cfg->sms_text = strdup(argv[i] + 9);
 
-	else if (strncmp(argv[i], "smtp_server=", 12) == 0)
-	    cfg->smtp_server = strdup(argv[i] + 12);
-
 #ifdef HAVE_YKCLIENT
 	else if (strncmp(argv[i], "yk_prefix=", 10) == 0)
 	    cfg->yk_prefix = strdup(argv[i] + 10);
@@ -294,7 +291,7 @@ static int parse_config(pam_handle_t *pamh, int argc, const char **argv, module_
     if (cfg->gauth_ws_uri && cfg->gauth_ws_action)
         cfg->gauth_enabled = 1;
 
-    if (cfg->sms_gateway && cfg->smtp_server)
+    if (cfg->sms_gateway)
         cfg->sms_enabled = 1;
 
     if (cfg->yk_id)
@@ -318,7 +315,6 @@ static int parse_config(pam_handle_t *pamh, int argc, const char **argv, module_
     DBG(("sms_gateway => %s",     cfg->sms_gateway));
     DBG(("sms_subject => %s",     cfg->sms_subject));
     DBG(("sms_text => %s",        cfg->sms_text));
-    DBG(("smtp_server => %s",     cfg->smtp_server));
     DBG(("yk_enabled => %s",      cfg->yk_enabled));
     DBG(("yk_prefix => %s",       cfg->yk_prefix));
     DBG(("yk_uri => %s",          cfg->yk_uri));
@@ -349,7 +345,6 @@ void free_config(module_config *cfg)
         if(cfg->sms_gateway)     free(cfg->sms_gateway);
         if(cfg->sms_subject)     free(cfg->sms_subject);
         if(cfg->sms_text)        free(cfg->sms_text);
-        if(cfg->smtp_server)     free(cfg->smtp_server);
         if(cfg->yk_prefix)       free(cfg->yk_prefix);
         if(cfg->yk_uri)          free(cfg->yk_uri);
         if(cfg->yk_key)          free(cfg->yk_key);
