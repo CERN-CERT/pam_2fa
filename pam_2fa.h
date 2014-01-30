@@ -1,10 +1,6 @@
 #ifndef _PAM_2FA_H_
 #define _PAM_2FA_H_
 
-#ifdef HAVE_CONFIG_H
-    #include "config.h"
-#endif
-
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>

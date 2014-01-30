@@ -1,6 +1,6 @@
-//#include <stdarg.h>
-//#include <errno.h>
-//#include <limits.h>
+#ifdef HAVE_CONFIG_H
+    #include "config.h"
+#endif
 
 #include <curl/curl.h>
 
