@@ -10,7 +10,7 @@
 void __module_load(void)   __attribute__((constructor));
 void __module_unload(void) __attribute__((destructor));
 
-static int parse_config(int argc, const char **argv, module_config **cfg);
+static int parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **ncfg);
 
 PAM_EXTERN int pam_sm_setcred(pam_handle_t * pamh, int flags, int argc,
 			      const char **argv)
@@ -28,11 +28,11 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     int retval;
     size_t resp_len = 0;
     char *resp = NULL, *otp = NULL;
-    const char *username = NULL;
+    char *username = NULL;
     auth_func selected_auth_func = NULL;
     int gauth_ok = 0, sms_ok = 0, yk_ok = 0;
 
-    retval = parse_config(argc, argv, &cfg);
+    retval = parse_config(pamh, argc, argv, &cfg);
 
     //CHECK PAM CONFIGURATION
     if (retval == CONFIG_ERROR) {
@@ -100,7 +100,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 	goto done;
     }
 
-    auth_func menu_functions[3];
+    auth_func menu_functions[4] = { 0, 0, 0, 0 };
     int menu_len = 0;
 
     if (cfg->gauth_enabled && user_cfg->gauth_login[0]) {
@@ -129,7 +129,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 
     if(menu_len > 1) {
         //SHOW THE SELECTION MENU
-        int i = 0;
+        int i = 1;
 
         pam_prompt(pamh, PAM_TEXT_INFO, NULL, "Login for %s:\n", username);
 
@@ -162,7 +162,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
             }
         }
     } else if(menu_len == 1) {
-         selected_auth_func = menu_functions[0];
+         selected_auth_func = menu_functions[1];
     } else {
 	pam_syslog(pamh, LOG_INFO, "No supported 2nd factor for user '%s'", username);
 	pam_prompt(pamh, PAM_ERROR_MSG, NULL, "No supported 2nd factors for user '%s'", username);
@@ -182,14 +182,16 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 }
 
 
-static int parse_config(int argc, const char **argv, module_config **ncfg)
+static int parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **ncfg)
 {
     module_config *cfg = NULL;
     int i;
 
     cfg = (module_config *) calloc(1, sizeof(module_config));
-    if(!cfg)
+    if(!cfg) {
+        pam_syslog(pamh, LOG_CRIT, "Out of memory");
         return CONFIG_ERROR;
+    }
 
     for (i = 0; i < argc; ++i) {
 
@@ -265,8 +267,10 @@ static int parse_config(int argc, const char **argv, module_config **ncfg)
 	    cfg->yk_user_file = strdup(argv[i] + 13);
 #endif
 
-        else
+        else {
+            pam_syslog(pamh, LOG_ERR, "Invalid option: %s", argv[i]);
             return CONFIG_ERROR;
+        }
     }
 
     //DEFAULT VALUES
@@ -322,8 +326,10 @@ static int parse_config(int argc, const char **argv, module_config **ncfg)
     DBG(("yk_key => %s",          cfg->yk_key));
     DBG(("yk_user_file => %s",    cfg->yk_user_file));
 
-    if(!cfg->gauth_enabled && !cfg->sms_enabled && !cfg->yk_enabled)
+    if(!cfg->gauth_enabled && !cfg->sms_enabled && !cfg->yk_enabled) {
+        pam_syslog(pamh, LOG_ERR, "No configured 2nd factors");
         return CONFIG_ERROR;
+    }
 
     *ncfg = cfg;
     return OK;

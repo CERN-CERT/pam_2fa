@@ -106,6 +106,8 @@ int ldap_search_factors(pam_handle_t *pamh, module_config * cfg, const char *use
 		}
 	    }
 	}
+
+        ldap_memfree(a);
     }
 
     if (retval != OK) {
@@ -117,8 +119,6 @@ int ldap_search_factors(pam_handle_t *pamh, module_config * cfg, const char *use
     //CLEAR...
   done:
 
-    if (a != NULL)
-	ldap_memfree(a);
     if (ber != NULL)
 	ber_free(ber, 0);
     if (vals != NULL)

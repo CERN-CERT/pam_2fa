@@ -48,7 +48,7 @@ int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cf
         if(!otp)
 	    pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &otp, "Yubikey: ");
 
-	if (otp) {
+	if (otp && *otp) {
 	    DBG(("Yubikey = %s", otp));
 	    pam_syslog(pamh, LOG_DEBUG, "Yubikey OTP: %s (%zu)", otp, strlen(otp));
 
@@ -86,10 +86,15 @@ int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cf
 
 	    default:
 	        pam_syslog(pamh, LOG_INFO, "Yubikey server response: %s (%d)", ykclient_strerror(retval), retval);
+	        pam_prompt(pamh, PAM_ERROR_MSG, NULL, "%s", ykclient_strerror(retval));
 		retval = ERROR;
 		break;
 	    }
 	} else {
+            if(otp) {
+		free(otp);
+                otp = NULL;
+            }
 	    pam_syslog(pamh, LOG_INFO, "No user input!");
 	    retval = ERROR;
 	}
