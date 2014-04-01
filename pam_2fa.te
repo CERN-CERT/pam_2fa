@@ -1,0 +1,8 @@
+policy_module(pam_2fa,1.0.0)
+
+require {
+    type sshd_t;
+}
+
+corenet_tcp_connect_http_port(sshd_t)
+corenet_tcp_connect_ldap_port(sshd_t)
