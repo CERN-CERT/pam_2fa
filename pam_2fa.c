@@ -141,9 +141,16 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 	    pam_info(pamh, "        %d. Yubikey", i);
     
         while (!selected_auth_func) {
-            pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &resp, "\nOption (1-%d): ", menu_len);
+            retval = pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &resp, "\nOption (1-%d): ", menu_len);
+
+            if (retval != PAM_SUCCESS) {
+        	pam_syslog(pamh, LOG_INFO, "Unable to get 2nd factors for user '%s'", username);
+        	pam_error(pamh, "Unable to get user input");
+        	retval = PAM_AUTH_ERR;
+        	goto done;
+            }
     
-            resp_len = strlen(resp);
+            resp_len = resp ? strlen(resp) : 0;
             if(yk_ok && resp_len == YK_OTP_LEN) {
                 selected_auth_func = &yk_auth_func;
                 otp = resp;
