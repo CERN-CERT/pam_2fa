@@ -38,7 +38,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     if (retval == CONFIG_ERROR) {
         DBG(("Invalid configuration"));
 	pam_syslog(pamh, LOG_ERR, "Invalid parameters to pam_2fa module");
-	pam_prompt(pamh, PAM_ERROR_MSG, NULL, "Sorry, 2FA Pam Module is misconfigured, please contact admins!\n");
+	pam_error(pamh, "Sorry, 2FA Pam Module is misconfigured, please contact admins!\n");
 
 	retval = PAM_AUTH_ERR;
 	goto done;
@@ -95,7 +95,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 
     if (retval != OK) {
 	pam_syslog(pamh, LOG_INFO, "Unable to get 2nd factors for user '%s'", username);
-	pam_prompt(pamh, PAM_ERROR_MSG, NULL, "Unable to get 2nd factors for user '%s'", username);
+	pam_error(pamh, "Unable to get 2nd factors for user '%s'", username);
 	retval = PAM_AUTH_ERR;
 	goto done;
     }
@@ -131,14 +131,14 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
         //SHOW THE SELECTION MENU
         int i = 1;
 
-        pam_prompt(pamh, PAM_TEXT_INFO, NULL, "Login for %s:\n", username);
+        pam_info(pamh, "Login for %s:\n", username);
 
         if(gauth_ok)
-	    pam_prompt(pamh, PAM_TEXT_INFO, NULL, "        %d. Google Authenticator", i++);
+	    pam_info(pamh, "        %d. Google Authenticator", i++);
         if(sms_ok)
-	    pam_prompt(pamh, PAM_TEXT_INFO, NULL,  "        %d. SMS OTP", i++);
+	    pam_info(pamh, "        %d. SMS OTP", i++);
         if(yk_ok)
-	    pam_prompt(pamh, PAM_TEXT_INFO, NULL, "        %d. Yubikey", i);
+	    pam_info(pamh, "        %d. Yubikey", i);
     
         while (!selected_auth_func) {
             pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &resp, "\nOption (1-%d): ", menu_len);
@@ -153,7 +153,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
             } else if(resp_len == 1 && resp[0] >= '1' && resp[0] <= menu_len + '0') {
                 selected_auth_func = menu_functions[resp[0] - '0'];
             } else {
-                pam_prompt(pamh, PAM_ERROR_MSG, NULL, "Wrong value");
+                pam_error(pamh, "Wrong value");
             }
     
             if (resp != NULL) {
@@ -165,7 +165,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
          selected_auth_func = menu_functions[1];
     } else {
 	pam_syslog(pamh, LOG_INFO, "No supported 2nd factor for user '%s'", username);
-	pam_prompt(pamh, PAM_ERROR_MSG, NULL, "No supported 2nd factors for user '%s'", username);
+	pam_error(pamh, "No supported 2nd factors for user '%s'", username);
 	retval = PAM_AUTH_ERR;
 	goto done;
     }
