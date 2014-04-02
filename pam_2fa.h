@@ -78,6 +78,8 @@ struct pam_2fa_privs {
 
 typedef int (*auth_func) (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
 
+#define AUTHTOK_INCORRECT "\b\n\r\177INCORRECT"
+
 #define LOG_PREFIX "[pam_2fa] "
 
 #define ROOT_USER "root"
