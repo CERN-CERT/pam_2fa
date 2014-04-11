@@ -141,6 +141,7 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
 
             //PARSE THE RESPONSE
             http_response.buffer[http_response.size] = 0;
+            http_response.size = 0;
             result = strstr(http_response.buffer, soap_result_tag);
             if (result == NULL) {
                 DBG(("Invalid SOAP response: %s", http_response.buffer));
