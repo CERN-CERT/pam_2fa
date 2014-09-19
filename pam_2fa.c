@@ -34,7 +34,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     int gauth_ok = 0, sms_ok = 0, yk_ok = 0;
 
     retval = pam_get_item(pamh, PAM_AUTHTOK, (const void **) &authtok);
-    if (retval != PAM_SUCCESS || authtok == NULL || !strcmp(authtok, AUTHTOK_INCORRECT)) {
+    if (retval != PAM_SUCCESS || (authtok != NULL && !strcmp(authtok, AUTHTOK_INCORRECT))) {
         DBG(("Previous authentication failed, let's stop here!"));
 	retval = PAM_AUTH_ERR;
 	goto done;
