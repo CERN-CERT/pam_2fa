@@ -26,7 +26,7 @@ int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * 
     DBG(("Mail [%s] %s: %s", dst, cfg->sms_subject, txt));
     pam_syslog(pamh, LOG_DEBUG, "Sending SMS to %s", dst);
     retval = send_mail(dst, txt, cfg);
-    DBG(("Return status = %d", mail_status));
+    DBG(("Return status = %d", retval));
 
     if (retval != 0) {
 	pam_syslog(pamh, LOG_ERR, "%s Failed to send authentication code by SMS!",
