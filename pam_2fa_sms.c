@@ -14,7 +14,7 @@ static int rnd_numb(char *otp, int length);
 int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp) {
     int retval = 0, trial = 0;
     char *entered_code = NULL;
-    char code[cfg->otp_length + 1], dst[512], txt[2048];
+    char code[cfg->otp_length + 1], dst[1024], txt[2048];
 
     //GENERATE OTP/RANDOM CODE
     rnd_numb(code, (int) cfg->otp_length);
