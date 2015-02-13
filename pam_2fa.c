@@ -32,7 +32,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     const char *authtok = NULL;
     const char *env_value = NULL;
     auth_func selected_auth_func = NULL;
-    int gauth_ok = 0, sms_ok = 0, yk_ok = 0;
+    _Bool non_root = 0, gauth_ok = 0, sms_ok = 0, yk_ok = 0;
 
     env_value = pam_getenv(pamh, "PAM_2FA");
     if (env_value != NULL) {
@@ -74,7 +74,9 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 
     DBG(("username = %s", username));
 
-    if (cfg->ldap_enabled && strcmp(username, ROOT_USER)) {
+    non_root = strcmp(username, ROOT_USER);
+
+    if (cfg->ldap_enabled && non_root) {
 #ifdef HAVE_LDAP
         //GET 2nd FACTORS FROM LDAP
         retval = ldap_search_factors(pamh, cfg, username, &user_cfg);
@@ -100,7 +102,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
         }
 
 #ifdef HAVE_CURL
-        if(cfg->gauth_enabled)
+        if(cfg->gauth_enabled && non_root)
             strncpy(user_cfg->gauth_login, username, GAUTH_LOGIN_LEN + 1);
 #endif
 
