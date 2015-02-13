@@ -91,6 +91,10 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
         goto done;
     }
 
+    if (!user_cfg->gauth_login[0]) {
+        strncpy(user_cfg->gauth_login, "INVALID&&USER&&NAME", GAUTH_LOGIN_LEN);
+    }
+
     //GET USER INPUT
     retval = ERROR;
     for (trial = 0; retval != OK && trial < cfg->retry; ++trial) {

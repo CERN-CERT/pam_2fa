@@ -19,20 +19,22 @@ int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * 
     //GENERATE OTP/RANDOM CODE
     rnd_numb(code, (int) cfg->otp_length);
 
-    //SEND CODE WITH EMAIL/SMS 
-    snprintf(dst, 1024, "%s@%s", user_cfg->sms_mobile, cfg->sms_gateway);
-    snprintf(txt, 2048, "%s%s", cfg->sms_text, code);
+    if (user_cfg->sms_mobile[0]) {
+        //SEND CODE WITH EMAIL/SMS 
+        snprintf(dst, 1024, "%s@%s", user_cfg->sms_mobile, cfg->sms_gateway);
+        snprintf(txt, 2048, "%s%s", cfg->sms_text, code);
 
-    DBG(("Mail [%s] %s: %s", dst, cfg->sms_subject, txt));
-    pam_syslog(pamh, LOG_DEBUG, "Sending SMS to %s", dst);
-    retval = send_mail(dst, txt, cfg);
-    DBG(("Return status = %d", retval));
+        DBG(("Mail [%s] %s: %s", dst, cfg->sms_subject, txt));
+        pam_syslog(pamh, LOG_DEBUG, "Sending SMS to %s", dst);
+        retval = send_mail(dst, txt, cfg);
+        DBG(("Return status = %d", retval));
 
-    if (retval != 0) {
-	pam_syslog(pamh, LOG_ERR, "%s Failed to send authentication code by SMS!",
-	       LOG_PREFIX);
-	pam_prompt(pamh, PAM_ERROR_MSG, NULL, "Failed to send authentication code by SMS!\n");
-	return (ERROR);
+        if (retval != 0) {
+            pam_syslog(pamh, LOG_ERR, "%s Failed to send authentication code by SMS!",
+                       LOG_PREFIX);
+            pam_prompt(pamh, PAM_ERROR_MSG, NULL, "Failed to send authentication code by SMS!\n");
+            return (ERROR);
+        }
     }
 
     pam_prompt(pamh, PAM_TEXT_INFO, NULL, SMS_TEXT_WAIT);

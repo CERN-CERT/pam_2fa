@@ -125,7 +125,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     auth_func menu_functions[4] = { 0, 0, 0, 0 };
     int menu_len = 0;
 
-    if (cfg->gauth_enabled && user_cfg->gauth_login[0]) {
+    if (cfg->gauth_enabled) {
 #ifdef HAVE_CURL
 	++menu_len;
 	menu_functions[menu_len] = &gauth_auth_func;
@@ -134,12 +134,12 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 	DBG(("GAuth configured, but CURL not compiled (should never happen!)"));
 #endif
     }
-    if (cfg->sms_enabled && user_cfg->sms_mobile[0]) {
+    if (cfg->sms_enabled) {
 	++menu_len;
 	menu_functions[menu_len] = &sms_auth_func;
         sms_ok = 1;
     }
-    if (cfg->yk_enabled && user_cfg->yk_publicids) {
+    if (cfg->yk_enabled) {
 #ifdef HAVE_YKCLIENT
 	++menu_len;
 	menu_functions[menu_len] = &yk_auth_func;
@@ -149,7 +149,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 #endif
     }
 
-    if(menu_len > 1) {
+    if(non_root) {
         //SHOW THE SELECTION MENU
         int i = 1;
 
@@ -190,8 +190,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
                 resp = NULL;
             }
         }
-    } else if(menu_len == 1) {
-         selected_auth_func = menu_functions[1];
+    } else if(yk_ok) {
+         selected_auth_func = &yk_auth_func;
     } else {
 	pam_syslog(pamh, LOG_INFO, "No supported 2nd factor for user '%s'", username);
 	pam_error(pamh, "No supported 2nd factors for user '%s'", username);

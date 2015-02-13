@@ -62,8 +62,12 @@ int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cf
 		continue;
 	    }
 
-            for(retval = 1, publicid = user_cfg->yk_publicids; retval && *publicid; ++publicid)
-	        retval = strncmp(otp, *publicid, YK_PUBLICID_LEN);
+            if (user_cfg->yk_publicids) {
+                for(retval = 1, publicid = user_cfg->yk_publicids; retval && *publicid; ++publicid)
+                    retval = strncmp(otp, *publicid, YK_PUBLICID_LEN);
+            } else {
+                retval = -1;
+            }
 
 	    if (retval != 0) {
 		DBG(("INCORRECT yubikey public ID"));
