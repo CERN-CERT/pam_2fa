@@ -8,9 +8,8 @@
 
 #include "pam_2fa.h"
 
-int ldap_search_factors(pam_handle_t *pamh, module_config * cfg, const char *username, user_config **user_ncfg)
+int ldap_search_factors(pam_handle_t *pamh, module_config * cfg, const char *username, user_config *user_cfg)
 {
-    user_config *user_cfg = NULL;
     LDAP *ld = NULL;
     LDAPMessage *result = NULL;
     int status, retval;
@@ -21,10 +20,6 @@ int ldap_search_factors(pam_handle_t *pamh, module_config * cfg, const char *use
     char *a = NULL, *v = NULL;
     BerValue *servercred = NULL, **vals = NULL, **val = NULL;
     BerValue cred = { .bv_len = 0 , .bv_val = 0 };
-
-    user_cfg = (user_config *) calloc(1, sizeof(user_config));
-    if(!user_cfg)
-        return ERROR;
 
     snprintf(base, 1024, "CN=%s,%s", username, cfg->ldap_basedn);
     status = ldap_initialize(&ld, cfg->ldap_uri);
@@ -127,13 +122,6 @@ int ldap_search_factors(pam_handle_t *pamh, module_config * cfg, const char *use
 	ldap_msgfree(result);
     if (ld != NULL)
 	ldap_unbind_ext(ld, NULL, NULL);
-    if (retval != OK) {
-        free_user_config(user_cfg);
-        *user_ncfg = NULL;
-        return retval;
-    }
-
-    *user_ncfg = user_cfg;
     return retval;
 }
 

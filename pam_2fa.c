@@ -11,6 +11,7 @@ void __module_load(void)   __attribute__((constructor));
 void __module_unload(void) __attribute__((destructor));
 
 static int parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **ncfg);
+static void free_config(module_config *cfg);
 
 PAM_EXTERN int pam_sm_setcred(pam_handle_t * pamh, int flags, int argc,
 			      const char **argv)
@@ -74,12 +75,18 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 
     DBG(("username = %s", username));
 
+    user_cfg = (user_config *) calloc(1, sizeof(user_config));
+    if(!user_cfg) {
+        retval = PAM_AUTH_ERR;
+        goto done;
+    }
+
     non_root = strcmp(username, ROOT_USER);
 
     if (cfg->ldap_enabled && non_root) {
 #ifdef HAVE_LDAP
         //GET 2nd FACTORS FROM LDAP
-        retval = ldap_search_factors(pamh, cfg, username, &user_cfg);
+        retval = ldap_search_factors(pamh, cfg, username, user_cfg);
 #else
 	DBG(("LDAP configured, but not compiled (should never happen!)"));
 #endif
@@ -92,12 +99,6 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
         if(!user_entry) {
             pam_syslog(pamh, LOG_ERR, "Can't get passwd entry for '%s'", username);
             retval = PAM_AUTH_ERR;
-            goto done;
-        }
-
-        user_cfg = (user_config *) calloc(1, sizeof(user_config));
-        if(!user_cfg) {
-	    retval = PAM_AUTH_ERR;
             goto done;
         }
 
@@ -209,10 +210,12 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
         }
     }
 
-  done:
-
-    if(cfg) free_config(cfg);
-    if(user_cfg) free_user_config(user_cfg);
+done:
+    free_config(cfg);
+    if(user_cfg) {
+        yk_free_publicids(user_cfg->yk_publicids);
+        free(user_cfg);
+    }
     return retval;
 }
 
@@ -366,7 +369,7 @@ static int parse_config(pam_handle_t *pamh, int argc, const char **argv, module_
     return OK;
 }
 
-void free_config(module_config *cfg)
+static void free_config(module_config *cfg)
 {
     if(cfg) {
         if(cfg->capath)          free(cfg->capath);
@@ -388,13 +391,6 @@ void free_config(module_config *cfg)
     }
 }
 
-void free_user_config(user_config *user_cfg)
-{
-    if(user_cfg) {
-        yk_free_publicids(user_cfg->yk_publicids);
-        free(user_cfg);
-    }
-}
 
 // Initialize curl when loading the shared library
 void __module_load(void)

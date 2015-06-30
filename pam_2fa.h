@@ -118,7 +118,7 @@ int pam_2fa_drop_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struct 
 int pam_2fa_regain_priv(pam_handle_t *pamh, struct pam_2fa_privs *p);
 
 #ifdef HAVE_LDAP
-int ldap_search_factors(pam_handle_t *pamh, module_config * cfg, const char *username, user_config **user_ncfg);
+int ldap_search_factors(pam_handle_t *pamh, module_config * cfg, const char *username, user_config *user_cfg);
 #endif
 
 #ifdef HAVE_CURL
@@ -134,8 +134,5 @@ int yk_auth_func    (pam_handle_t * pamh, user_config * user_cfg, module_config 
 #endif
 
 int sms_auth_func   (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
-
-void free_config(module_config *cfg);
-void free_user_config(user_config *user_cfg);
 
 #endif
