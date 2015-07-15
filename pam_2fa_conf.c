@@ -42,6 +42,13 @@ free_config(module_config *cfg)
     }
 }
 
+#define STRDUP_OR_DIE(dst, src) \
+do {                            \
+    dst = strdup(src);          \
+    if (!dst)                   \
+        goto mem_err;           \
+} while (0)
+
 int
 parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **ncfg)
 {
@@ -65,7 +72,7 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
                 cfg->retry = MAX_RETRY;
 
         } else if (strncmp(argv[i], "capath=", 7) == 0) {
-            cfg->capath = strdup(argv[i] + 7);
+            STRDUP_OR_DIE(cfg->capath, argv[i] + 7);
 
         } else if (strncmp(argv[i], "otp_length=", 11) == 0) {
             sscanf(argv[i], "otp_length=%zu", &cfg->otp_length);
@@ -74,53 +81,53 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
 
 #ifdef HAVE_LDAP
         } else if (strncmp(argv[i], "ldap_uri=", 9) == 0) {
-            cfg->ldap_uri = strdup(argv[i] + 9);
+            STRDUP_OR_DIE(cfg->ldap_uri, argv[i] + 9);
 
         } else if (strncmp(argv[i], "ldap_attr=", 10) == 0) {
-            cfg->ldap_attr = strdup(argv[i] + 10);
+            STRDUP_OR_DIE(cfg->ldap_attr, argv[i] + 10);
 
         } else if (strncmp(argv[i], "ldap_basedn=", 12) == 0) {
-            cfg->ldap_basedn = strdup(argv[i] + 12);
+            STRDUP_OR_DIE(cfg->ldap_basedn, argv[i] + 12);
 #endif
 
 #ifdef HAVE_CURL
         } else if (strncmp(argv[i], "gauth_prefix=", 13) == 0) {
-            cfg->gauth_prefix = strdup(argv[i] + 13);
+            STRDUP_OR_DIE(cfg->gauth_prefix, argv[i] + 13);
 
         } else if (strncmp(argv[i], "gauth_ws_uri=", 13) == 0) {
-            cfg->gauth_ws_uri = strdup(argv[i] + 13);
+            STRDUP_OR_DIE(cfg->gauth_ws_uri, argv[i] + 13);
 
         } else if (strncmp(argv[i], "gauth_ws_action=", 16) == 0) {
-            cfg->gauth_ws_action = strdup(argv[i] + 16);
+            STRDUP_OR_DIE(cfg->gauth_ws_action, argv[i] + 16);
 #endif
 
         } else if (strncmp(argv[i], "sms_prefix=", 11) == 0) {
-            cfg->sms_prefix = strdup(argv[i] + 11);
+            STRDUP_OR_DIE(cfg->sms_prefix, argv[i] + 11);
 
         } else if (strncmp(argv[i], "sms_gateway=", 12) == 0) {
-            cfg->sms_gateway = strdup(argv[i] + 12);
+            STRDUP_OR_DIE(cfg->sms_gateway, argv[i] + 12);
 
         } else if (strncmp(argv[i], "sms_subject=", 12) == 0) {
-            cfg->sms_subject = strdup(argv[i] + 12);
+            STRDUP_OR_DIE(cfg->sms_subject, argv[i] + 12);
 
         } else if (strncmp(argv[i], "sms_text=", 9) == 0) {
-            cfg->sms_text = strdup(argv[i] + 9);
+            STRDUP_OR_DIE(cfg->sms_text, argv[i] + 9);
 
 #ifdef HAVE_YKCLIENT
         } else if (strncmp(argv[i], "yk_prefix=", 10) == 0) {
-            cfg->yk_prefix = strdup(argv[i] + 10);
+            STRDUP_OR_DIE(cfg->yk_prefix, argv[i] + 10);
 
         } else if (strncmp(argv[i], "yk_uri=", 7) == 0) {
-            cfg->yk_uri = strdup(argv[i] + 7);
+            STRDUP_OR_DIE(cfg->yk_uri, argv[i] + 7);
 
         } else if (strncmp(argv[i], "yk_id=", 6) == 0) {
             sscanf(argv[i], "yk_id=%d", &cfg->yk_id);
 
         } else if (strncmp(argv[i], "yk_key=", 7) == 0) {
-            cfg->yk_key = strdup(argv[i] + 7);
+            STRDUP_OR_DIE(cfg->yk_key, argv[i] + 7);
 
         } else if (strncmp(argv[i], "yk_user_file=", 13) == 0) {
-            cfg->yk_user_file = strdup(argv[i] + 13);
+            STRDUP_OR_DIE(cfg->yk_user_file, argv[i] + 13);
 #endif
 
         } else {
@@ -135,19 +142,19 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
     if (!cfg->otp_length)
         cfg->otp_length = OTP_LENGTH;
     if (!cfg->sms_subject)
-        cfg->sms_subject = strdup(SMS_SUBJECT);
+        STRDUP_OR_DIE(cfg->sms_subject, SMS_SUBJECT);
     if (!cfg->sms_text)
-        cfg->sms_text = strdup(SMS_TEXT);
+        STRDUP_OR_DIE(cfg->sms_text, SMS_TEXT);
     if (!cfg->gauth_ws_action)
-        cfg->gauth_ws_action = strdup(GAUTH_DEFAULT_ACTION);
+        STRDUP_OR_DIE(cfg->gauth_ws_action, GAUTH_DEFAULT_ACTION);
     if (!cfg->gauth_prefix)
-        cfg->gauth_prefix = strdup(GAUTH_PREFIX);
+        STRDUP_OR_DIE(cfg->gauth_prefix, GAUTH_PREFIX);
     if (!cfg->sms_prefix)
-        cfg->sms_prefix = strdup(SMS_PREFIX);
+        STRDUP_OR_DIE(cfg->sms_prefix, SMS_PREFIX);
     if (!cfg->yk_prefix)
-        cfg->yk_prefix = strdup(YK_PREFIX);
+        STRDUP_OR_DIE(cfg->yk_prefix, YK_PREFIX);
     if (!cfg->yk_user_file)
-        cfg->yk_user_file = strdup(YK_DEFAULT_USER_FILE);
+        STRDUP_OR_DIE(cfg->yk_user_file, YK_DEFAULT_USER_FILE);
 
     if (cfg->gauth_prefix)
         cfg->gauth_prefix_len = strlen(cfg->gauth_prefix);
@@ -200,4 +207,9 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
 
     *ncfg = cfg;
     return OK;
+
+mem_err:
+    pam_syslog(pamh, LOG_CRIT, "Out of memory");
+    free(cfg);
+    return CONFIG_ERROR;
 }
