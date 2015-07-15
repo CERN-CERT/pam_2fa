@@ -31,7 +31,7 @@ AM_CFLAGS = -Wall -Wextra \
 libdir = $(PAMDIR)
 
 lib_LTLIBRARIES = pam_2fa.la
-pam_2fa_la_SOURCES = pam_2fa_ldap.c pam_2fa_gauth.c pam_2fa_sms.c pam_2fa_yk.c pam_2fa_priv.c pam_2fa.c
+pam_2fa_la_SOURCES = pam_2fa_ldap.c pam_2fa_gauth.c pam_2fa_sms.c pam_2fa_yk.c pam_2fa_priv.c pam_2fa_conf.c pam_2fa.c
 pam_2fa_la_CFLAGS = $(LIBCURL_CFLAGS) $(LIBLDAP_CFLAGS) $(LIBYKCLIENT_CFLAGS) $(AM_CFLAGS)
 pam_2fa_la_LIBADD = $(LIBCURL_LIBS) $(LIBLDAP_LIBS) $(LIBYKCLIENT_LIBS) $(AM_LDFLAGS) -lpam
 pam_2fa_la_LDFLAGS = -module -avoid-version

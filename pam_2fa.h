@@ -114,6 +114,9 @@ typedef int (*auth_func) (pam_handle_t * pamh, user_config * user_cfg, module_co
 #define SMS_SUBJECT ""
 #define SMS_TEXT "Your authentication code is: "
 
+int parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **ncfg);
+void free_config(module_config *cfg);
+
 int pam_2fa_drop_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struct passwd *pw);
 int pam_2fa_regain_priv(pam_handle_t *pamh, struct pam_2fa_privs *p);
 
