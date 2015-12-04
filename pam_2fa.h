@@ -1,5 +1,5 @@
-#ifndef _PAM_2FA_H_
-#define _PAM_2FA_H_
+#ifndef HEADER_PAM_2FA_H
+#define HEADER_PAM_2FA_H
 
 #include <ctype.h>
 #include <stdio.h>
@@ -138,4 +138,4 @@ int yk_auth_func    (pam_handle_t * pamh, user_config * user_cfg, module_config 
 
 int sms_auth_func   (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
 
-#endif
+#endif /* HEADER_PAM_2FA_H */
