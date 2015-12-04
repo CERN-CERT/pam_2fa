@@ -6,7 +6,7 @@
 
 #include "pam_2fa.h"
 
-int ldap_search_factors(pam_handle_t *pamh, module_config * cfg, const char *username, user_config *user_cfg)
+int ldap_search_factors(pam_handle_t *pamh, const module_config * cfg, const char *username, user_config *user_cfg)
 {
     LDAP *ld = NULL;
     LDAPMessage *result = NULL;

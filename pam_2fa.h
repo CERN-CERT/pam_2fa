@@ -124,7 +124,7 @@ int pam_2fa_drop_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struct 
 int pam_2fa_regain_priv(pam_handle_t *pamh, struct pam_2fa_privs *p);
 
 #ifdef HAVE_LDAP
-int ldap_search_factors(pam_handle_t *pamh, module_config * cfg, const char *username, user_config *user_cfg);
+int ldap_search_factors(pam_handle_t *pamh, const module_config * cfg, const char *username, user_config *user_cfg);
 #endif
 
 #ifdef HAVE_CURL
