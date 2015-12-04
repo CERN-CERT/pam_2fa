@@ -2,6 +2,9 @@
     #include "config.h"
 #endif
 
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <time.h>
 
 #include "pam_2fa.h"
@@ -10,6 +13,65 @@ static char from[512] = { 0 };
 
 static int send_mail(char *dst, char *text, module_config *cfg);
 static int rnd_numb(char *otp, int length);
+
+void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg,
+                        struct passwd *user_entry, user_config *user_cfg)
+{
+    int fd, retval;
+    struct stat st;
+    char filename[1024];
+    char buf[SMS_MOBILE_LEN+2];
+    char *buf_pos;
+    size_t i, buf_rem, buf_len;
+    ssize_t bytes_read;
+
+    snprintf(filename, 1024, "%s/%s", user_entry->pw_dir, cfg->sms_user_file);
+
+    retval = stat(filename, &st);
+    if (retval < 0) {
+        pam_syslog(pamh, LOG_DEBUG, "Can't get stats of file '%s'", filename);
+        return;
+    }
+
+    if (!S_ISREG(st.st_mode)) {
+        pam_syslog(pamh, LOG_ERR, "Not a regular file '%s'", filename);
+        return;
+    }
+
+    fd = open(filename, O_RDONLY);
+    if (fd < 0) {
+        pam_syslog(pamh, LOG_ERR, "Can't open file '%s'", filename);
+        return;
+    }
+
+    buf_pos = buf;
+    buf_rem = SMS_MOBILE_LEN+1;
+
+    while ((bytes_read = read(fd, buf_pos, buf_rem)) > 0) {
+        buf_pos += (size_t)bytes_read; // This is always > 0 by construct
+        buf_rem = (size_t)((ssize_t)bytes_read - bytes_read);
+        *buf_pos = 0;
+        if (buf_rem == 0)
+            break;
+    }
+    close(fd);
+
+    buf_len = (size_t)(buf_pos - buf); // This is always > 0 by construct
+    if (buf_len > SMS_MOBILE_LEN) {
+        pam_syslog(pamh, LOG_ERR, "SMS number too small (%li)'", buf_pos - buf);
+        return;
+    }
+
+    for (i = 0; i <= buf_len && buf[i] >= '0' && buf[i] <= '9'; ++i);
+
+    if (i != buf_len + 1 && buf[i] != '\n' && buf[i] != '\r') {
+        pam_syslog(pamh, LOG_ERR, "SMS number contain non integer: \"%.*s\" '%i' %zu %zu", (int)(i+1), buf, buf[i], i, buf_len);
+        return;
+    }
+
+    memcpy(user_cfg->sms_mobile, buf, i);
+    user_cfg->sms_mobile[i] = 0;
+}
 
 int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp) {
     int retval = 0, trial = 0;

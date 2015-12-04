@@ -43,6 +43,7 @@ typedef struct {
     int sms_enabled;
     char *sms_prefix;
     size_t sms_prefix_len;
+    char *sms_user_file;
     char *sms_gateway;
     char *sms_subject;
     char *sms_text;
@@ -85,6 +86,7 @@ typedef int (*auth_func) (pam_handle_t * pamh, user_config * user_cfg, module_co
 #define ROOT_USER "root"
 
 #define YK_DEFAULT_USER_FILE ".ssh/trusted_yubikeys"
+#define SMS_DEFAULT_USER_FILE ".ssh/trusted_sms"
 
 #define OTP_LENGTH 6
 #define MAX_RETRY 3
@@ -138,6 +140,8 @@ void yk_free_publicids(char **publicids);
 
 int yk_auth_func    (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
 #endif
+
+void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg, struct passwd *user_entry, user_config *user_cfg);
 
 int sms_auth_func   (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
 

@@ -30,6 +30,8 @@ free_config(module_config *cfg)
             free(cfg->sms_subject);
         if (cfg->sms_text)
             free(cfg->sms_text);
+        if (cfg->sms_user_file)
+            free(cfg->sms_user_file);
         if (cfg->yk_prefix)
             free(cfg->yk_prefix);
         if (cfg->yk_uri)
@@ -113,6 +115,9 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
         } else if (strncmp(argv[i], "sms_text=", 9) == 0) {
             STRDUP_OR_DIE(cfg->sms_text, argv[i] + 9);
 
+        } else if (strncmp(argv[i], "sms_user_file=", 14) == 0) {
+            STRDUP_OR_DIE(cfg->sms_text, argv[i] + 14);
+
 #ifdef HAVE_YKCLIENT
         } else if (strncmp(argv[i], "yk_prefix=", 10) == 0) {
             STRDUP_OR_DIE(cfg->yk_prefix, argv[i] + 10);
@@ -151,6 +156,8 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
         STRDUP_OR_DIE(cfg->gauth_prefix, GAUTH_PREFIX);
     if (!cfg->sms_prefix)
         STRDUP_OR_DIE(cfg->sms_prefix, SMS_PREFIX);
+    if (!cfg->sms_user_file)
+        STRDUP_OR_DIE(cfg->sms_user_file, SMS_DEFAULT_USER_FILE);
     if (!cfg->yk_prefix)
         STRDUP_OR_DIE(cfg->yk_prefix, YK_PREFIX);
     if (!cfg->yk_user_file)
@@ -197,6 +204,7 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
     DBG(("sms_gateway => %s",     cfg->sms_gateway));
     DBG(("sms_subject => %s",     cfg->sms_subject));
     DBG(("sms_text => %s",        cfg->sms_text));
+    DBG(("sms_user_file => %s",   cfg->sms_user_file));
     DBG(("yk_enabled => %s",      cfg->yk_enabled));
     DBG(("yk_prefix => %s",       cfg->yk_prefix));
     DBG(("yk_uri => %s",          cfg->yk_uri));

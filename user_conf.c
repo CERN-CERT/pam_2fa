@@ -41,11 +41,12 @@ user_config *get_user_config(pam_handle_t * pamh,
             strncpy(user_cfg->gauth_login, username, GAUTH_LOGIN_LEN + 1);
 #endif
 
-#ifdef HAVE_YKCLIENT
         pam_2fa_drop_priv(pamh, &p, user_entry);
+#ifdef HAVE_YKCLIENT
         yk_load_user_file(pamh, cfg, user_entry, &user_cfg->yk_publicids);
-        pam_2fa_regain_priv(pamh, &p);
 #endif
+        sms_load_user_file(pamh, cfg, user_entry, user_cfg);
+        pam_2fa_regain_priv(pamh, &p);
     }
 
     return user_cfg;
