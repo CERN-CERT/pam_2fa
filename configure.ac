@@ -85,12 +85,17 @@ AS_IF(
     [ldap_init],
     [
       AC_SUBST([LIBLDAP_LIBS], ["-lldap -llber"])
+      AM_CONDITIONAL([USE_LDAP], true)
       HAVE_LDAP=1
       AC_DEFINE([HAVE_LDAP], [1], [Define if you have libldap])
     ],
-    [AC_MSG_WARN([libldap not found, will not be compiled (--without-ldap to disable ldap support)])],
+    [
+      AC_MSG_WARN([libldap not found, will not be compiled (--without-ldap to disable ldap support)])
+      AM_CONDITIONAL([USE_LDAP], false)
+    ],
     []
-  )
+  ),
+  AM_CONDITIONAL([USE_LDAP], false)
 )
 
 # CURL
@@ -112,12 +117,17 @@ AS_IF(
     [
       AC_SUBST([LIBCURL_CFLAGS])
       AC_SUBST([LIBCURL_LIBS])
+      AM_CONDITIONAL([USE_CURL], true)
       HAVE_CURL=1
       AC_DEFINE([HAVE_CURL], [1], [Define if you have curl])
     ],
-    [AC_MSG_WARN([libcurl not found, will not be compiled (--without-curl to disable curl support)])],
+    [
+      AC_MSG_WARN([libcurl not found, will not be compiled (--without-curl to disable curl support)])
+      AM_CONDITIONAL([USE_CURL], false)
+    ],
     []
-  )]
+  )],
+  AM_CONDITIONAL([USE_CURL], false)
 )
 
 # ykclient (no pkg-config found)
@@ -138,12 +148,17 @@ AS_IF(
     [ykclient_init],
     [
       AC_SUBST([LIBYKCLIENT_LIBS], ["-lykclient"])
+      AM_CONDITIONAL([USE_YKCLIENT], true)
       HAVE_YKCLIENT=1
       AC_DEFINE([HAVE_YKCLIENT], [1], [Define if you have ykclient])
     ],
-    [AC_MSG_WARN([libykclient not found, will not be compiled (--without-ykclient to disable ykclient support)])],
+    [
+      AC_MSG_WARN([libykclient not found, will not be compiled (--without-ykclient to disable ykclient support)])
+      AM_CONDITIONAL([USE_YKCLIENT], false)
+    ],
     []
-  )
+  ),
+  AM_CONDITIONAL([USE_YKCLIENT], false)
 )
 
 AM_CONDITIONAL(COMPILER_IS_CLANG, [test x"$CC" = xclang])

@@ -39,10 +39,28 @@ AM_CFLAGS += -fPIC
 libdir = $(PAMDIR)
 
 lib_LTLIBRARIES = pam_2fa.la
-pam_2fa_la_SOURCES = ldap.c gauth.c sms.c yk.c priv.c module_conf.c pam_2fa.c
-pam_2fa_la_CFLAGS = $(LIBCURL_CFLAGS) $(LIBLDAP_CFLAGS) $(LIBYKCLIENT_CFLAGS) $(AM_CFLAGS)
-pam_2fa_la_LIBADD = $(LIBCURL_LIBS) $(LIBLDAP_LIBS) $(LIBYKCLIENT_LIBS) $(AM_LDFLAGS) -lpam
+pam_2fa_la_SOURCES = sms.c priv.c module_conf.c pam_2fa.c
+pam_2fa_la_CFLAGS = $(AM_CFLAGS)
+pam_2fa_la_LIBADD = $(AM_LDFLAGS) -lpam
 pam_2fa_la_LDFLAGS = -module -avoid-version
+
+if USE_LDAP
+pam_2fa_la_SOURCES += ldap.c
+pam_2fa_la_CFLAGS += $(LIBLDAP_CFLAGS)
+pam_2fa_la_LIBADD += $(LIBLDAP_LIBS)
+endif
+
+if USE_CURL
+pam_2fa_la_SOURCES += gauth.c
+pam_2fa_la_CFLAGS += $(LIBCURL_CFLAGS)
+pam_2fa_la_LIBADD += $(LIBCURL_LIBS)
+endif
+
+if USE_YKCLIENT
+pam_2fa_la_SOURCES += yk.c
+pam_2fa_la_CFLAGS += $(LIBYKCLIENT_CFLAGS)
+pam_2fa_la_LIBADD += $(LIBYKCLIENT_LIBS)
+endif
 
 install-exec-hook:
 	find $(DESTDIR)$(libdir) -type f -name \*.la -delete
