@@ -163,8 +163,10 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
     if (cfg->yk_prefix)
         cfg->yk_prefix_len = strlen(cfg->yk_prefix);
 
+#ifdef HAVE_LDAP
     if (cfg->ldap_uri && cfg->ldap_attr && cfg->ldap_basedn)
         cfg->ldap_enabled = 1;
+#endif /* HAVE_LDAP */
 
     if (cfg->gauth_ws_uri && cfg->gauth_ws_action)
         cfg->gauth_enabled = 1;
@@ -180,10 +182,12 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
     DBG(("retry => %d",           cfg->retry));
     DBG(("otp_length => %d",      cfg->otp_length));
     DBG(("capath => %d",          cfg->capath));
+#ifdef HAVE_LDAP
     DBG(("ldap_enabled = %s",     cfg->ldap_enabled));
     DBG(("ldap_uri = %s",         cfg->ldap_uri));
     DBG(("ldap_basedn => '%s'",   cfg->ldap_basedn));
     DBG(("ldap_attr => %s",       cfg->ldap_attr));
+#endif /* HAVE_LDAP */
     DBG(("gauth_enabled => %s",   cfg->gauth_enabled));
     DBG(("gauth_prefix => %s",    cfg->gauth_prefix));
     DBG(("gauth_ws_uri => %s",    cfg->gauth_ws_uri));
