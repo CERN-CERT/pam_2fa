@@ -51,72 +51,94 @@ freebsd*)
   ;;
 esac
 
-AC_ARG_WITH(pam-dir,
-  AC_HELP_STRING([--with-pam-dir=DIR],
-                 [Where to install PAM module [[PREFIX/lib/security]]]),
-            [case "${withval}" in
-            /*) PAMDIR="${withval}";;
-            ./*|../*) AC_MSG_ERROR(Bad value for --with-pam-dir);;
-            *) PAMDIR="\$(exec_prefix)/lib/${withval}";;
-            esac])
+AC_ARG_WITH(
+  [pam-dir],
+  AC_HELP_STRING(
+    [--with-pam-dir=DIR],
+    [Where to install PAM module [[PREFIX/lib/security]]]
+  ),
+  [
+    case "${withval}" in
+    /*) PAMDIR="${withval}";;
+    ./*|../*) AC_MSG_ERROR(Bad value for --with-pam-dir);;
+    *) PAMDIR="\$(exec_prefix)/lib/${withval}";;
+    esac
+  ]
+)
 AC_MSG_NOTICE([PAM installation path $PAMDIR])
 
 # ldap (no pkg-config found)
-AC_ARG_WITH([ldap],
-            [AS_HELP_STRING([--without-ldap],
-              [disable support for ldap])],
-            [],
-            [with_ldap=yes])
-          
-          LIBLDAP_LIBS=
-          LIBLDAP_CFLAGS=
-          AS_IF([test "x$with_ldap" != xno],
-            [AC_CHECK_LIB([ldap], [ldap_init],
-              [AC_SUBST([LIBLDAP_LIBS], ["-lldap -llber"])
-               AC_DEFINE([HAVE_LDAP], [1],
-                         [Define if you have libldap])
-              ],
-              [AC_MSG_WARN(
-                 [libldap not found, will not be compiled (--without-ldap to disable ldap support)])],
-              [])])
+AC_ARG_WITH(
+  [ldap],
+  AS_HELP_STRING([--without-ldap], [disable support for ldap]),
+  [],
+  [with_ldap=yes]
+)
+
+LIBLDAP_LIBS=
+LIBLDAP_CFLAGS=
+AS_IF(
+  [test "x$with_ldap" != xno],
+  AC_CHECK_LIB(
+    [ldap],
+    [ldap_init],
+    [
+      AC_SUBST([LIBLDAP_LIBS], ["-lldap -llber"])
+      AC_DEFINE([HAVE_LDAP], [1], [Define if you have libldap])
+    ],
+    [AC_MSG_WARN([libldap not found, will not be compiled (--without-ldap to disable ldap support)])],
+    []
+  )
+)
 
 # CURL
-AC_ARG_WITH([curl],
-            [AS_HELP_STRING([--without-curl],
-              [disable support for curl])],
-            [],
-            [with_curl=yes])
-          
-          LIBCURL_LIBS=
-          LIBCURL_CFLAGS=
-          AS_IF([test "x$with_curl" != xno],
-            [PKG_CHECK_MODULES(LIBCURL, libcurl,
-              [AC_SUBST([LIBCURL_CFLAGS])
-               AC_SUBST([LIBCURL_LIBS])
-               AC_DEFINE([HAVE_CURL], [1], [Define if you have curl])
-              ],
-              [AC_MSG_WARN(
-                 [libcurl not found, will not be compiled (--without-curl to disable curl support)])],
-              [])])
+AC_ARG_WITH(
+  [curl],
+  AS_HELP_STRING([--without-curl], [disable support for curl]),
+  [],
+  [with_curl=yes]
+)
+
+LIBCURL_LIBS=
+LIBCURL_CFLAGS=
+AS_IF(
+  [test "x$with_curl" != xno],
+  [PKG_CHECK_MODULES(
+    LIBCURL,
+    libcurl,
+    [
+      AC_SUBST([LIBCURL_CFLAGS])
+      AC_SUBST([LIBCURL_LIBS])
+      AC_DEFINE([HAVE_CURL], [1], [Define if you have curl])
+    ],
+    [AC_MSG_WARN([libcurl not found, will not be compiled (--without-curl to disable curl support)])],
+    []
+  )]
+)
 
 # ykclient (no pkg-config found)
-AC_ARG_WITH([ykclient],
-            [AS_HELP_STRING([--without-ykclient],
-              [disable support for ykclient])],
-            [],
-            [with_ykclient=yes])
-          
-          LIBYKCLIENT_LIBS=
-          LIBYKCLIENT_CFLAGS=
-          AS_IF([test "x$with_ykclient" != xno],
-            [AC_CHECK_LIB([ykclient], [ykclient_init],
-              [AC_SUBST([LIBYKCLIENT_LIBS], ["-lykclient"])
-               AC_DEFINE([HAVE_YKCLIENT], [1],
-                         [Define if you have ykclient])
-              ],
-              [AC_MSG_WARN(
-                 [libykclient not found, will not be compiled (--without-ykclient to disable ykclient support)])],
-              [])])
+AC_ARG_WITH(
+  [ykclient],
+  AS_HELP_STRING([--without-ykclient], [disable support for ykclient]),
+  [],
+  [with_ykclient=yes]
+)
+
+LIBYKCLIENT_LIBS=
+LIBYKCLIENT_CFLAGS=
+AS_IF(
+  [test "x$with_ykclient" != xno],
+  AC_CHECK_LIB(
+    [ykclient],
+    [ykclient_init],
+    [
+      AC_SUBST([LIBYKCLIENT_LIBS], ["-lykclient"])
+      AC_DEFINE([HAVE_YKCLIENT], [1], [Define if you have ykclient])
+    ],
+    [AC_MSG_WARN([libykclient not found, will not be compiled (--without-ykclient to disable ykclient support)])],
+    []
+  )
+)
 
 AM_CONDITIONAL(COMPILER_IS_CLANG, [test x"$CC" = xclang])
 
