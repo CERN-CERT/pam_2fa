@@ -2,13 +2,15 @@
     #include "config.h"
 #endif
 
-#include <curl/curl.h>
-
 #include "pam_2fa.h"
+
+#ifdef HAVE_CURL
+#include <curl/curl.h>
 
 // Initialize curl when loading the shared library
 void __module_load(void)   __attribute__((constructor));
 void __module_unload(void) __attribute__((destructor));
+#endif
 
 PAM_EXTERN int pam_sm_setcred(pam_handle_t * pamh, int flags, int argc,
 			      const char **argv)
@@ -206,6 +208,7 @@ done:
     return retval;
 }
 
+#ifdef HAVE_CURL
 // Initialize curl when loading the shared library
 void __module_load(void)
 {
@@ -216,3 +219,4 @@ void __module_unload(void)
 {
     curl_global_cleanup();
 }
+#endif
