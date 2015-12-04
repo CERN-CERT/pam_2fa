@@ -77,6 +77,7 @@ AC_ARG_WITH(
 
 LIBLDAP_LIBS=
 LIBLDAP_CFLAGS=
+HAVE_LDAP=0
 AS_IF(
   [test "x$with_ldap" != xno],
   AC_CHECK_LIB(
@@ -84,6 +85,7 @@ AS_IF(
     [ldap_init],
     [
       AC_SUBST([LIBLDAP_LIBS], ["-lldap -llber"])
+      HAVE_LDAP=1
       AC_DEFINE([HAVE_LDAP], [1], [Define if you have libldap])
     ],
     [AC_MSG_WARN([libldap not found, will not be compiled (--without-ldap to disable ldap support)])],
@@ -101,6 +103,7 @@ AC_ARG_WITH(
 
 LIBCURL_LIBS=
 LIBCURL_CFLAGS=
+HAVE_CURL=0
 AS_IF(
   [test "x$with_curl" != xno],
   [PKG_CHECK_MODULES(
@@ -109,6 +112,7 @@ AS_IF(
     [
       AC_SUBST([LIBCURL_CFLAGS])
       AC_SUBST([LIBCURL_LIBS])
+      HAVE_CURL=1
       AC_DEFINE([HAVE_CURL], [1], [Define if you have curl])
     ],
     [AC_MSG_WARN([libcurl not found, will not be compiled (--without-curl to disable curl support)])],
@@ -126,6 +130,7 @@ AC_ARG_WITH(
 
 LIBYKCLIENT_LIBS=
 LIBYKCLIENT_CFLAGS=
+HAVE_YKCLIENT=0
 AS_IF(
   [test "x$with_ykclient" != xno],
   AC_CHECK_LIB(
@@ -133,6 +138,7 @@ AS_IF(
     [ykclient_init],
     [
       AC_SUBST([LIBYKCLIENT_LIBS], ["-lykclient"])
+      HAVE_YKCLIENT=1
       AC_DEFINE([HAVE_YKCLIENT], [1], [Define if you have ykclient])
     ],
     [AC_MSG_WARN([libykclient not found, will not be compiled (--without-ykclient to disable ykclient support)])],
@@ -151,5 +157,6 @@ AC_MSG_NOTICE([Summary of build options:
   Host type:          ${host}
   Compiler:           ${CC}
   Library types:      Shared=${enable_shared}, Static=${enable_static}
+  Dependencies:       LDAP=${HAVE_LDAP}, CURL=${HAVE_CURL}, YKCLIENT=${HAVE_YKCLIENT}
 ])
 
