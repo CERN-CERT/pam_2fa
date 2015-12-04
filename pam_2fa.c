@@ -159,13 +159,19 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
             }
     
             resp_len = resp ? strlen(resp) : 0;
+#ifdef HAVE_YKCLIENT
             if(yk_ok && resp_len == YK_OTP_LEN) {
                 selected_auth_func = &yk_auth_func;
                 otp = resp;
-            } else if(gauth_ok && resp_len == cfg->otp_length) {
+            } else
+#endif
+#ifdef HAVE_CURL
+            if(gauth_ok && resp_len == cfg->otp_length) {
                 selected_auth_func = &gauth_auth_func;
                 otp = resp;
-            } else if(resp_len == 1 && resp[0] >= '1' && resp[0] <= menu_len + '0') {
+            } else
+#endif
+            if(resp_len == 1 && resp[0] >= '1' && resp[0] <= menu_len + '0') {
                 selected_auth_func = menu_functions[resp[0] - '0'];
             } else {
                 pam_error(pamh, "Wrong value");
@@ -192,7 +198,9 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 done:
     free_config(cfg);
     if(user_cfg) {
+#ifdef HAVE_YKCLIENT
         yk_free_publicids(user_cfg->yk_publicids);
+#endif
         free(user_cfg);
     }
     return retval;
