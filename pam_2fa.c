@@ -31,7 +31,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     const char *username = NULL;
     const char *authtok = NULL;
     auth_func selected_auth_func = NULL;
-    _Bool non_root = 0, gauth_ok = 0, sms_ok = 0, yk_ok = 0;
+    _Bool gauth_ok = 0, sms_ok = 0, yk_ok = 0;
 
     retval = pam_get_item(pamh, PAM_AUTHTOK, (const void **) &authtok);
     if (retval != PAM_SUCCESS || (authtok != NULL && !strcmp(authtok, AUTHTOK_INCORRECT))) {
@@ -62,48 +62,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 
     DBG(("username = %s", username));
 
-    user_cfg = (user_config *) calloc(1, sizeof(user_config));
+    user_cfg = get_user_config(pamh, cfg, username);
     if(!user_cfg) {
-        retval = PAM_AUTH_ERR;
-        goto done;
-    }
-
-    non_root = strcmp(username, ROOT_USER);
-
-    if (cfg->ldap_enabled && non_root) {
-#ifdef HAVE_LDAP
-        //GET 2nd FACTORS FROM LDAP
-        retval = ldap_search_factors(pamh, cfg, username, user_cfg);
-#else
-	DBG(("LDAP configured, but not compiled (should never happen!)"));
-#endif
-    } else {
-        //NO LDAP QUERY
-        struct passwd *user_entry = NULL;
-        struct pam_2fa_privs p;
-
-        user_entry = pam_modutil_getpwnam(pamh, username);
-        if(!user_entry) {
-            pam_syslog(pamh, LOG_ERR, "Can't get passwd entry for '%s'", username);
-            retval = PAM_AUTH_ERR;
-            goto done;
-        }
-
-#ifdef HAVE_CURL
-        if(cfg->gauth_enabled && non_root)
-            strncpy(user_cfg->gauth_login, username, GAUTH_LOGIN_LEN + 1);
-#endif
-
-#ifdef HAVE_YKCLIENT
-        pam_2fa_drop_priv(pamh, &p, user_entry);
-        yk_load_user_file(pamh, cfg, user_entry, &user_cfg->yk_publicids);
-        pam_2fa_regain_priv(pamh, &p);
-#endif
-
-        retval = OK;
-    }
-
-    if (retval != OK) {
 	pam_syslog(pamh, LOG_INFO, "Unable to get 2nd factors for user '%s'", username);
 	pam_error(pamh, "Unable to get 2nd factors for user '%s'", username);
 	retval = PAM_AUTH_ERR;
@@ -198,13 +158,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     retval = selected_auth_func(pamh, user_cfg, cfg, otp);
 
 done:
+    free_user_config(user_cfg);
     free_config(cfg);
-    if(user_cfg) {
-#ifdef HAVE_YKCLIENT
-        yk_free_publicids(user_cfg->yk_publicids);
-#endif
-        free(user_cfg);
-    }
     return retval;
 }
 
