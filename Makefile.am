@@ -2,7 +2,14 @@
 # Compiling
 #
 ACLOCAL_AMFLAGS = -I m4
-AM_CFLAGS = -Wall -Wextra \
+
+if COMPILER_IS_CLANG
+  AM_CFLAGS = -Weverything \
+        -Wno-padded \
+        -Wno-disabled-macro-expansion \
+        -Wno-unused-parameter
+else
+  AM_CFLAGS = -Wall -Wextra \
         -Wbad-function-cast \
         -Wcast-align \
         -Wcast-qual \
@@ -25,8 +32,9 @@ AM_CFLAGS = -Wall -Wextra \
         -Wno-unused-parameter \
         -Wno-format-zero-length \
         -Wno-format-y2k \
-        -Wunsafe-loop-optimizations \
-        -fPIC
+        -Wunsafe-loop-optimizations
+endif
+AM_CFLAGS += -fPIC
 
 libdir = $(PAMDIR)
 

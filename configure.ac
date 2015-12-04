@@ -118,6 +118,7 @@ AC_ARG_WITH([ykclient],
                  [libykclient not found, will not be compiled (--without-ykclient to disable ykclient support)])],
               [])])
 
+AM_CONDITIONAL(COMPILER_IS_CLANG, [test x"$CC" = xclang])
 
 AC_CONFIG_FILES([Makefile])
 #AC_CONFIG_FILES([Makefile test/Makefile])
