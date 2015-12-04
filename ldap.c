@@ -2,8 +2,6 @@
     #include "config.h"
 #endif
 
-#ifdef HAVE_LDAP
-
 #include <ldap.h>
 
 #include "pam_2fa.h"
@@ -124,5 +122,3 @@ int ldap_search_factors(pam_handle_t *pamh, module_config * cfg, const char *use
 	ldap_unbind_ext(ld, NULL, NULL);
     return retval;
 }
-
-#endif
