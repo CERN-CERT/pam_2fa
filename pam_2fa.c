@@ -28,20 +28,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     char *resp = NULL, *otp = NULL;
     const char *username = NULL;
     const char *authtok = NULL;
-    const char *env_value = NULL;
     auth_func selected_auth_func = NULL;
     _Bool non_root = 0, gauth_ok = 0, sms_ok = 0, yk_ok = 0;
-
-    env_value = pam_getenv(pamh, "PAM_2FA");
-    if (env_value != NULL) {
-        if (strcmp(env_value, "SUCCESS") == 0) {
-            pam_syslog(pamh, LOG_INFO, "bypassing 2FA");
-            retval = PAM_IGNORE;
-        } else {
-            retval = PAM_AUTH_ERR;
-        }
-        goto done;
-    }
 
     retval = pam_get_item(pamh, PAM_AUTHTOK, (const void **) &authtok);
     if (retval != PAM_SUCCESS || (authtok != NULL && !strcmp(authtok, AUTHTOK_INCORRECT))) {
@@ -200,12 +188,6 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 
     //CALL THE CORRESPONDING AUTHENTICATION METHOD
     retval = selected_auth_func(pamh, user_cfg, cfg, otp);
-
-    if (retval == PAM_SUCCESS) {
-        if (pam_putenv(pamh, "PAM_2FA=SUCCESS") != PAM_SUCCESS) {
-            pam_syslog(pamh, LOG_INFO, "pam_putenv failed'");
-        }
-    }
 
 done:
     free_config(cfg);
