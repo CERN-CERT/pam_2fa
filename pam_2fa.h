@@ -89,7 +89,7 @@ typedef int (*auth_func) (pam_handle_t * pamh, user_config * user_cfg, module_co
 #define SMS_DEFAULT_USER_FILE ".ssh/trusted_sms"
 
 #define OTP_LENGTH 6
-#define MAX_RETRY 3
+#define MAX_RETRY 1
 
 #define GAUTH_DEFAULT_ACTION "CheckUser"
 
