@@ -2,6 +2,7 @@
     #include "config.h"
 #endif
 
+#include <sys/types.h>
 #include <string.h>
 #include <syslog.h>
 
