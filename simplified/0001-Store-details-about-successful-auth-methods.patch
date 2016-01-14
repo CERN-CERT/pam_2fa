@@ -1,0 +1,68 @@
+From 3eb395d784659cd0bc1c29a9eca936a05217ce63 Mon Sep 17 00:00:00 2001
+From: Vincent Brillault <vincent.brillault@cern.ch>
+Date: Tue, 1 Dec 2015 15:03:35 +0100
+Subject: [PATCH 1/5] Store details about successful auth methods
+
+---
+ auth.h    | 2 ++
+ auth2.c   | 9 +++++++++
+ session.c | 3 +++
+ 3 files changed, 14 insertions(+)
+
+diff --git a/auth.h b/auth.h
+index f9d191c..8cd7a96 100644
+--- a/auth.h
++++ b/auth.h
+@@ -78,6 +78,8 @@ struct Authctxt {
+ #endif
+ 	Buffer		*loginmsg;
+ 	void		*methoddata;
++
++	char            *auth_details;
+ };
+ /*
+  * Every authentication method has to handle authentication requests for
+diff --git a/auth2.c b/auth2.c
+index 436cd60..156c175 100644
+--- a/auth2.c
++++ b/auth2.c
+@@ -306,6 +306,7 @@ userauth_finish(Authctxt *authctxt, int authenticated, const char *method,
+     const char *submethod)
+ {
+ 	char *methods;
++	char *prev_auth_details;
+ 	int partial = 0;
+ 
+ 	if (!authctxt->valid && authenticated)
+@@ -336,6 +337,14 @@ userauth_finish(Authctxt *authctxt, int authenticated, const char *method,
+ 	if (authctxt->postponed)
+ 		return;
+ 
++	if (authenticated || partial) {
++		prev_auth_details = authctxt->auth_details;
++		xasprintf(&authctxt->auth_details, "%s%s%s",
++		    prev_auth_details ? prev_auth_details : "",
++		    prev_auth_details ? ", " : "", method);
++		free(prev_auth_details);
++	}
++
+ #ifdef USE_PAM
+ 	if (options.use_pam && authenticated) {
+ 		if (!PRIVSEP(do_pam_account())) {
+diff --git a/session.c b/session.c
+index e2ab34f..cf7fbd5 100644
+--- a/session.c
++++ b/session.c
+@@ -2843,6 +2843,9 @@ do_cleanup(Authctxt *authctxt)
+ 	if (authctxt == NULL)
+ 		return;
+ 
++	free(authctxt->auth_details);
++	authctxt->auth_details = NULL;
++
+ #ifdef USE_PAM
+ 	if (options.use_pam) {
+ 		sshpam_cleanup();
+-- 
+1.8.3.1
+

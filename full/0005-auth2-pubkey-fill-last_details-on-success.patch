@@ -1,0 +1,47 @@
+From 469485af96607ab749b92b56fe0edf8fe5873469 Mon Sep 17 00:00:00 2001
+From: Vincent Brillault <vincent.brillault@cern.ch>
+Date: Tue, 1 Dec 2015 15:16:22 +0100
+Subject: [PATCH 5/8] auth2-pubkey: fill last_details on success
+
+---
+ auth2-pubkey.c | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/auth2-pubkey.c b/auth2-pubkey.c
+index a639fe5..986b20d 100644
+--- a/auth2-pubkey.c
++++ b/auth2-pubkey.c
+@@ -75,7 +75,7 @@ userauth_pubkey(Authctxt *authctxt)
+ {
+ 	Buffer b;
+ 	Key *key = NULL;
+-	char *pkalg, *userstyle;
++	char *pkalg, *userstyle, *pubkey;
+ 	u_char *pkblob, *sig;
+ 	u_int alen, blen, slen;
+ 	int have_sig, pktype;
+@@ -155,14 +155,19 @@ userauth_pubkey(Authctxt *authctxt)
+ #ifdef DEBUG_PK
+ 		buffer_dump(&b);
+ #endif
+-		pubkey_auth_info(authctxt, key, NULL);
++		pubkey = pubkey_format(key);
++		auth_info(authctxt, "%s", pubkey);
+ 
+ 		/* test for correct signature */
+ 		authenticated = 0;
+ 		if (PRIVSEP(user_key_allowed(authctxt->pw, key)) &&
+ 		    PRIVSEP(user_key_verify(key, sig, slen, buffer_ptr(&b),
+-		    buffer_len(&b))) == 1)
++		    buffer_len(&b))) == 1) {
+ 			authenticated = 1;
++			authctxt->last_details = pubkey;
++		} else {
++			free(pubkey);
++		}
+ 		buffer_free(&b);
+ 		free(sig);
+ 	} else {
+-- 
+1.8.3.1
+

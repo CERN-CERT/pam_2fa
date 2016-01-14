@@ -1,0 +1,36 @@
+From 18ec4b7c9831d10f688d4bdfbf72a1535066f07d Mon Sep 17 00:00:00 2001
+From: Vincent Brillault <vincent.brillault@cern.ch>
+Date: Tue, 1 Dec 2015 15:05:33 +0100
+Subject: [PATCH 3/8] Expose auth_details to pam via "SSH_USER_AUTH"
+
+Whenever the pam device is called, update the "SSH_USER_AUTH" PAM
+environment variable (Doing it outside this module exposes us to a NULL
+sshpam_handle).
+
+When a session will be later created, this variable, still part of the
+PAM environment variable will be copied to the child environment before
+being overriden by the latest value stored in auth_details. As a result,
+using the same variable name as the final one is key to prevent the
+final environment to be poluted with an outdated value.
+---
+ auth-pam.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/auth-pam.c b/auth-pam.c
+index 690711e..fd8bde1 100644
+--- a/auth-pam.c
++++ b/auth-pam.c
+@@ -693,6 +693,10 @@ sshpam_init_ctx(Authctxt *authctxt)
+ 		return (NULL);
+ 	}
+ 
++	/* Notify PAM about any already successful auth methods */
++	if (authctxt->auth_details)
++		do_pam_putenv("SSH_USER_AUTH", authctxt->auth_details);
++
+ 	ctxt = xcalloc(1, sizeof *ctxt);
+ 
+ 	/* Start the authentication thread */
+-- 
+1.8.3.1
+

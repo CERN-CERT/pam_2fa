@@ -1,0 +1,73 @@
+From df30cb66424a41a3f1f4634cb83cb192cc11ef6f Mon Sep 17 00:00:00 2001
+From: Vincent Brillault <vincent.brillault@cern.ch>
+Date: Tue, 1 Dec 2015 15:03:35 +0100
+Subject: [PATCH 1/8] Store details about successful auth methods
+
+---
+ auth.h    |  3 +++
+ auth2.c   | 13 +++++++++++++
+ session.c |  3 +++
+ 3 files changed, 19 insertions(+)
+
+diff --git a/auth.h b/auth.h
+index f9d191c..1d7ea6b 100644
+--- a/auth.h
++++ b/auth.h
+@@ -78,6 +78,9 @@ struct Authctxt {
+ #endif
+ 	Buffer		*loginmsg;
+ 	void		*methoddata;
++
++	char            *last_details;
++	char            *auth_details;
+ };
+ /*
+  * Every authentication method has to handle authentication requests for
+diff --git a/auth2.c b/auth2.c
+index 436cd60..b7ba160 100644
+--- a/auth2.c
++++ b/auth2.c
+@@ -306,6 +306,7 @@ userauth_finish(Authctxt *authctxt, int authenticated, const char *method,
+     const char *submethod)
+ {
+ 	char *methods;
++	char *prev_auth_details;
+ 	int partial = 0;
+ 
+ 	if (!authctxt->valid && authenticated)
+@@ -336,6 +337,18 @@ userauth_finish(Authctxt *authctxt, int authenticated, const char *method,
+ 	if (authctxt->postponed)
+ 		return;
+ 
++	if (authenticated || partial) {
++		prev_auth_details = authctxt->auth_details;
++		xasprintf(&authctxt->auth_details, "%s%s%s%s%s",
++		    prev_auth_details ? prev_auth_details : "",
++		    prev_auth_details ? ", " : "", method,
++		    authctxt->last_details ? ": " : "",
++		    authctxt->last_details ? authctxt->last_details : "");
++		free(authctxt->last_details);
++		authctxt->last_details = NULL;
++		free(prev_auth_details);
++	}
++
+ #ifdef USE_PAM
+ 	if (options.use_pam && authenticated) {
+ 		if (!PRIVSEP(do_pam_account())) {
+diff --git a/session.c b/session.c
+index e2ab34f..cf7fbd5 100644
+--- a/session.c
++++ b/session.c
+@@ -2843,6 +2843,9 @@ do_cleanup(Authctxt *authctxt)
+ 	if (authctxt == NULL)
+ 		return;
+ 
++	free(authctxt->auth_details);
++	authctxt->auth_details = NULL;
++
+ #ifdef USE_PAM
+ 	if (options.use_pam) {
+ 		sshpam_cleanup();
+-- 
+1.8.3.1
+

@@ -1,0 +1,46 @@
+From fb5a8bd5ba72665f16dff90218244aa7cf54337b Mon Sep 17 00:00:00 2001
+From: Vincent Brillault <vincent.brillault@cern.ch>
+Date: Tue, 1 Dec 2015 15:27:38 +0100
+Subject: [PATCH 4/5] privsep: Expose success auth methods
+
+Unfortunately, in the monitor thread, not the same amount of data is
+available when an key-base authentication succeed. It could be possible
+to extract the key information of all key that pass through
+mm_answer_keyverify, but linking it to the authentication success would
+be dangerous.
+
+Simply exposing the successul methods would already be a progress
+---
+ monitor.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/monitor.c b/monitor.c
+index 55575ed..660038e 100644
+--- a/monitor.c
++++ b/monitor.c
+@@ -383,6 +383,7 @@ monitor_child_preauth(Authctxt *_authctxt, struct monitor *pmonitor)
+ {
+ 	struct mon_table *ent;
+ 	int authenticated = 0, partial = 0;
++	char *prev_auth_details;
+ 
+ 	debug3("preauth child monitor started");
+ 
+@@ -420,6 +421,14 @@ monitor_child_preauth(Authctxt *_authctxt, struct monitor *pmonitor)
+ 		auth_submethod = NULL;
+ 		authenticated = (monitor_read(pmonitor, mon_dispatch, &ent) == 1);
+ 
++		if (authenticated) {
++			prev_auth_details = authctxt->auth_details;
++			xasprintf(&authctxt->auth_details, "%s%s%s",
++			    prev_auth_details ? prev_auth_details : "",
++			    prev_auth_details ? ", " : "", auth_method);
++			free(prev_auth_details);
++		}
++
+ 		/* Special handling for multiple required authentications */
+ 		if (options.num_auth_methods != 0) {
+ 			if (!compat20)
+-- 
+1.8.3.1
+

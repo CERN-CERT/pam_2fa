@@ -1,0 +1,259 @@
+diff --git a/auth-pam.c b/auth-pam.c
+index 690711e..fd8bde1 100644
+--- a/auth-pam.c
++++ b/auth-pam.c
+@@ -693,6 +693,10 @@ sshpam_init_ctx(Authctxt *authctxt)
+ 		return (NULL);
+ 	}
+ 
++	/* Notify PAM about any already successful auth methods */
++	if (authctxt->auth_details)
++		do_pam_putenv("SSH_USER_AUTH", authctxt->auth_details);
++
+ 	ctxt = xcalloc(1, sizeof *ctxt);
+ 
+ 	/* Start the authentication thread */
+diff --git a/auth.h b/auth.h
+index f9d191c..53fa20e 100644
+--- a/auth.h
++++ b/auth.h
+@@ -78,6 +78,9 @@ struct Authctxt {
+ #endif
+ 	Buffer		*loginmsg;
+ 	void		*methoddata;
++
++	char            *last_details;
++	char            *auth_details;
+ };
+ /*
+  * Every authentication method has to handle authentication requests for
+@@ -124,6 +127,7 @@ int	 auth_rsa_key_allowed(struct passwd *, BIGNUM *, Key **);
+ int	 auth_rhosts_rsa_key_allowed(struct passwd *, char *, char *, Key *);
+ int	 hostbased_key_allowed(struct passwd *, const char *, char *, Key *);
+ int	 user_key_allowed(struct passwd *, Key *);
++char	*pubkey_format(const Key *key);
+ void	 pubkey_auth_info(Authctxt *, const Key *, const char *, ...)
+ 	    __attribute__((__format__ (printf, 3, 4)));
+ 
+diff --git a/auth2-hostbased.c b/auth2-hostbased.c
+index 48aede4..41c225f 100644
+--- a/auth2-hostbased.c
++++ b/auth2-hostbased.c
+@@ -58,7 +58,7 @@ userauth_hostbased(Authctxt *authctxt)
+ {
+ 	Buffer b;
+ 	Key *key = NULL;
+-	char *pkalg, *cuser, *chost, *service;
++	char *pkalg, *cuser, *chost, *service, *pubkey;
+ 	u_char *pkblob, *sig;
+ 	u_int alen, blen, slen;
+ 	int pktype;
+@@ -131,15 +131,21 @@ userauth_hostbased(Authctxt *authctxt)
+ 	buffer_dump(&b);
+ #endif
+ 
++	pubkey = pubkey_format(key);
+ 	pubkey_auth_info(authctxt, key,
+-	    "client user \"%.100s\", client host \"%.100s\"", cuser, chost);
++	    "%s, client user \"%.100s\", client host \"%.100s\"", pubkey,
++	    cuser, chost);
+ 
+ 	/* test for allowed key and correct signature */
+ 	authenticated = 0;
+ 	if (PRIVSEP(hostbased_key_allowed(authctxt->pw, cuser, chost, key)) &&
+ 	    PRIVSEP(hostbased_key_verify(key, sig, slen, buffer_ptr(&b),
+-			buffer_len(&b))) == 1)
++			buffer_len(&b))) == 1) {
+ 		authenticated = 1;
++		authctxt->last_details = pubkey;
++	} else {
++		free(pubkey);
++	}
+ 
+ 	buffer_free(&b);
+ done:
+diff --git a/auth2-pubkey.c b/auth2-pubkey.c
+index 3808ec8..986b20d 100644
+--- a/auth2-pubkey.c
++++ b/auth2-pubkey.c
+@@ -75,7 +75,7 @@ userauth_pubkey(Authctxt *authctxt)
+ {
+ 	Buffer b;
+ 	Key *key = NULL;
+-	char *pkalg, *userstyle;
++	char *pkalg, *userstyle, *pubkey;
+ 	u_char *pkblob, *sig;
+ 	u_int alen, blen, slen;
+ 	int have_sig, pktype;
+@@ -155,14 +155,19 @@ userauth_pubkey(Authctxt *authctxt)
+ #ifdef DEBUG_PK
+ 		buffer_dump(&b);
+ #endif
+-		pubkey_auth_info(authctxt, key, NULL);
++		pubkey = pubkey_format(key);
++		auth_info(authctxt, "%s", pubkey);
+ 
+ 		/* test for correct signature */
+ 		authenticated = 0;
+ 		if (PRIVSEP(user_key_allowed(authctxt->pw, key)) &&
+ 		    PRIVSEP(user_key_verify(key, sig, slen, buffer_ptr(&b),
+-		    buffer_len(&b))) == 1)
++		    buffer_len(&b))) == 1) {
+ 			authenticated = 1;
++			authctxt->last_details = pubkey;
++		} else {
++			free(pubkey);
++		}
+ 		buffer_free(&b);
+ 		free(sig);
+ 	} else {
+@@ -200,7 +205,7 @@ done:
+ void
+ pubkey_auth_info(Authctxt *authctxt, const Key *key, const char *fmt, ...)
+ {
+-	char *fp, *extra;
++	char *pubkey, *extra;
+ 	va_list ap;
+ 	int i;
+ 
+@@ -210,24 +215,35 @@ pubkey_auth_info(Authctxt *authctxt, const Key *key, const char *fmt, ...)
+ 		i = vasprintf(&extra, fmt, ap);
+ 		va_end(ap);
+ 		if (i < 0 || extra == NULL)
+-			fatal("%s: vasprintf failed", __func__);	
++			fatal("%s: vasprintf failed", __func__);
+ 	}
+ 
++	pubkey = pubkey_format(key);
++	auth_info(authctxt, "%s%s%s", pubkey, extra == NULL ? "" : ", ",
++	    extra == NULL ? "" : extra);
++	free(pubkey);
++	free(extra);
++}
++
++char *
++pubkey_format(const Key *key)
++{
++	char *fp, *result;
++
+ 	if (key_is_cert(key)) {
+ 		fp = key_selected_fingerprint(key->cert->signature_key, SSH_FP_HEX);
+-		auth_info(authctxt, "%s ID %s (serial %llu) CA %s %s%s%s", 
++		xasprintf(&result, "%s ID %s (serial %llu) CA %s %s",
+ 		    key_type(key), key->cert->key_id,
+ 		    (unsigned long long)key->cert->serial,
+-		    key_type(key->cert->signature_key), fp,
+-		    extra == NULL ? "" : ", ", extra == NULL ? "" : extra);
++		    key_type(key->cert->signature_key), fp);
+ 		free(fp);
+ 	} else {
+ 		fp = key_selected_fingerprint(key, SSH_FP_HEX);
+-		auth_info(authctxt, "%s %s%s%s", key_type(key), fp,
+-		    extra == NULL ? "" : ", ", extra == NULL ? "" : extra);
++		xasprintf(&result, "%s %s", key_type(key), fp);
+ 		free(fp);
+ 	}
+-	free(extra);
++
++	return result;
+ }
+ 
+ int
+diff --git a/auth2.c b/auth2.c
+index 436cd60..b7ba160 100644
+--- a/auth2.c
++++ b/auth2.c
+@@ -306,6 +306,7 @@ userauth_finish(Authctxt *authctxt, int authenticated, const char *method,
+     const char *submethod)
+ {
+ 	char *methods;
++	char *prev_auth_details;
+ 	int partial = 0;
+ 
+ 	if (!authctxt->valid && authenticated)
+@@ -336,6 +337,18 @@ userauth_finish(Authctxt *authctxt, int authenticated, const char *method,
+ 	if (authctxt->postponed)
+ 		return;
+ 
++	if (authenticated || partial) {
++		prev_auth_details = authctxt->auth_details;
++		xasprintf(&authctxt->auth_details, "%s%s%s%s%s",
++		    prev_auth_details ? prev_auth_details : "",
++		    prev_auth_details ? ", " : "", method,
++		    authctxt->last_details ? ": " : "",
++		    authctxt->last_details ? authctxt->last_details : "");
++		free(authctxt->last_details);
++		authctxt->last_details = NULL;
++		free(prev_auth_details);
++	}
++
+ #ifdef USE_PAM
+ 	if (options.use_pam && authenticated) {
+ 		if (!PRIVSEP(do_pam_account())) {
+diff --git a/monitor.c b/monitor.c
+index 55575ed..660038e 100644
+--- a/monitor.c
++++ b/monitor.c
+@@ -383,6 +383,7 @@ monitor_child_preauth(Authctxt *_authctxt, struct monitor *pmonitor)
+ {
+ 	struct mon_table *ent;
+ 	int authenticated = 0, partial = 0;
++	char *prev_auth_details;
+ 
+ 	debug3("preauth child monitor started");
+ 
+@@ -420,6 +421,14 @@ monitor_child_preauth(Authctxt *_authctxt, struct monitor *pmonitor)
+ 		auth_submethod = NULL;
+ 		authenticated = (monitor_read(pmonitor, mon_dispatch, &ent) == 1);
+ 
++		if (authenticated) {
++			prev_auth_details = authctxt->auth_details;
++			xasprintf(&authctxt->auth_details, "%s%s%s",
++			    prev_auth_details ? prev_auth_details : "",
++			    prev_auth_details ? ", " : "", auth_method);
++			free(prev_auth_details);
++		}
++
+ 		/* Special handling for multiple required authentications */
+ 		if (options.num_auth_methods != 0) {
+ 			if (!compat20)
+diff --git a/session.c b/session.c
+index e2ab34f..2c90943 100644
+--- a/session.c
++++ b/session.c
+@@ -1365,6 +1365,10 @@ do_setup_env(Session *s, const char *shell)
+ 	}
+ #endif /* USE_PAM */
+ 
++	if (s->authctxt->auth_details)
++		child_set_env(&env, &envsize, "SSH_USER_AUTH",
++		     s->authctxt->auth_details);
++
+ 	if (auth_sock_name != NULL)
+ 		child_set_env(&env, &envsize, SSH_AUTHSOCKET_ENV_NAME,
+ 		    auth_sock_name);
+@@ -2843,6 +2847,9 @@ do_cleanup(Authctxt *authctxt)
+ 	if (authctxt == NULL)
+ 		return;
+ 
++	free(authctxt->auth_details);
++	authctxt->auth_details = NULL;
++
+ #ifdef USE_PAM
+ 	if (options.use_pam) {
+ 		sshpam_cleanup();
+diff --git a/ssh.1 b/ssh.1
+index f65e42f..60334c2 100644
+--- a/ssh.1
++++ b/ssh.1
+@@ -1284,6 +1284,10 @@ server IP address, and server port number.
+ This variable contains the original command line if a forced command
+ is executed.
+ It can be used to extract the original arguments.
++.It Ev SSH_USER_AUTH
++This variable contains, for SSH2 only, a comma-separated list of authentication
++methods that were successfuly used to authenticate. When possible, these
++methods are extended with detailed information on the credential used.
+ .It Ev SSH_TTY
+ This is set to the name of the tty (path to the device) associated
+ with the current shell or command.
