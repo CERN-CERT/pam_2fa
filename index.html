@@ -128,8 +128,8 @@ PasswordAuthentication no # No basic password authentication
 <p>In the end we have no choice but to patch OpenSSH to expose more information to PAM, allowing it to make the right decision. The patch is available on the <a href="https://bugzilla.mindrot.org/show_bug.cgi?id=2408">OpenSSH bug tracker</a> and <a href="https://github.com/CERN-CERT/openssh-portable">our Github</a>. We are also hosting it on here two versions that can be directly applied on RedHat sources:</p>
 
 <ul>
-<li>The <a href="openssh-6.6.1p1-expose-successful-auth-methods.patch">full version</a> (<a href="full/">atomic patches</a>), taken from the OpenSSH bugtracker and GitHub and adapted to sources from RedHat 7</li>
-<li>A <a href="openssh-6.6.1p1-expose-successful-auth-methods.simplified.patch">simplified version</a> (<a href="simplified/">atomic patches</a>): patching OpenSSH is always a risk, so we are simplifying the patch to make sure we understand it and keep it safe...</li>
+<li>The <a href="openssh-6.6.1p1-expose-successful-auth-methods.patch">full version</a> (<a href="https://github.com/CERN-CERT/pam_2fa/tree/gh-pages/full/">atomic patches</a>), taken from the OpenSSH bugtracker and GitHub and adapted to sources from RedHat 7</li>
+<li>A <a href="openssh-6.6.1p1-expose-successful-auth-methods.simplified.patch">simplified version</a> (<a href="https://github.com/CERN-CERT/pam_2fa/tree/gh-pages/simplified/">atomic patches</a>): patching OpenSSH is always a risk, so we are simplifying the patch to make sure we understand it and keep it safe...</li>
 </ul>
 
 <p>This patch adds a new environment variable, SSH_USER_AUTH, which is exposed:</p>
