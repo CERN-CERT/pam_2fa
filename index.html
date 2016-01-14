@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>Pam 2fa by CERN-CERT</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">Pam 2fa</h1>
+      <h2 class="project-tagline">Two Factor authentication for Portable OpenSSH</h2>
+      <a href="https://github.com/CERN-CERT/pam_2fa" class="btn">View on GitHub</a>
+      <a href="https://github.com/CERN-CERT/pam_2fa/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/CERN-CERT/pam_2fa/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
+
+    <section class="main-content">
+      <h2>
+<a id="using-2-factor-authentication-with-openssh" class="anchor" href="#using-2-factor-authentication-with-openssh" aria-hidden="true"><span class="octicon octicon-link"></span></a>Using 2 factor authentication with OpenSSH</h2>
+
+<p>Since OpenSSH can delegate the authentication to PAM, it's <em>easy</em> to extend a password-based authentication to a full 2 factor authentication. Since OpenSSH 6.2, it is also possible to check for a second factor after another method, for example using SSH keys, using <code>AuthenticationMethods</code>.</p>
+
+<p>However, we want more, we want our users to be able to use any of their authentication methods (password, SSH keys, Kerberos, ...) and propose them a second factor authentication afterwards. But let's start step by step from the basis and build our solution</p>
+
+<h3>
+<a id="the-basis-2-factor-authentication-with-pam" class="anchor" href="#the-basis-2-factor-authentication-with-pam" aria-hidden="true"><span class="octicon octicon-link"></span></a>The basis: 2 factor authentication with pam</h3>
+
+<p>PAM is by design modulable. It's possible to build your own module, compile it and by simply adding it to the right folder, PAM will be able to use it (after some configuration). You can find some existing module online or build your own based on them, for example:</p>
+
+<ul>
+<li><a href="https://github.com/Yubico/yubico-pam">https://github.com/Yubico/yubico-pam</a></li>
+<li><a href="https://github.com/duosecurity/duo_unix">https://github.com/duosecurity/duo_unix</a></li>
+<li><a href="https://github.com/CERN-CERT/pam_2fa">https://github.com/CERN-CERT/pam_2fa</a></li>
+</ul>
+
+<p>The PAM configurations is always found in the <code>/etc/pam</code> folder, and for sshd, this is <code>/etc/pam.d/sshd</code>. This configuration file obeys a very simple format, defined in its <a href="http://www.linux-pam.org/Linux-PAM-html/sag-configuration-file.html">documentation</a>. For most systems, <code>/etc/pam.d/sshd</code> will only contain an <code>include</code> control definition for the <code>auth</code> service like this one:</p>
+
+<pre><code>auth       include      password-auth
+</code></pre>
+
+<p>We need two changes in this configuration:</p>
+
+<ul>
+<li>Replacing the <code>include</code> by an <code>substack</code>. This will only change the way success and errors are handled. Instead of immediately stop and succeed/fail, PAM will continue through. This allows us to include another <code>required</code> rule without being worried by a <code>sufficient</code> rule to stop the authentication beforehand.</li>
+<li>Add a new <code>required</code> rule which will load our new second factor module, with, if required, its configuration.</li>
+</ul>
+
+<p>For CERN, this results in the following configuration:</p>
+
+<pre><code>auth       substack     password-auth
+auth       required     pam_2fa.so    [CERN-specific configuration]
+</code></pre>
+
+<p>And Voila, we have successfully configured PAM to use 2 factor authentication for sshd. Now we only need to configure sshd to use PAM via the following configuration:</p>
+
+<pre><code>UsePAM yes # That's easy!
+ChallengeResponseAuthentication yes # To allow the client to discuss with the remote PAM
+
+RSAAuthentication no # We can't support any non-pam authentication
+PubkeyAuthentication no # We can't support any non-pam authentication
+PasswordAuthentication no # No basic password authentication
+KerberosAuthentication no # We can't support any non-pam authentication
+</code></pre>
+
+<p>Just restarting our sshd service and we're done, we've protected our servers with 2 factor authentication! But this was only the beginning: we need to support Kerberos, not passwords.</p>
+
+<h3>
+<a id="authenticationmethods-supporting-kerberos" class="anchor" href="#authenticationmethods-supporting-kerberos" aria-hidden="true"><span class="octicon octicon-link"></span></a>AuthenticationMethods: supporting Kerberos</h3>
+
+<p>In OpenSSH 6.2, a new parameter was included: <code>AuthenticationMethods</code>. This new feature allows to define chains of authentication methods that are required. The design is relatively simple: the server exposes a list of method the client can use, the client pick one and use it, the servers then replies "good, now pick another one in this list", rinse&amp;repeat until satisfied.</p>
+
+<p>So we want to use Kerberos. Looking at the documentation, the corresponding method is <code>gssapi-with-mic</code>. Now, our second factor is using PAM, so we still need the corresponding method, <code>keyboard-interactive:pam</code>. We just have to chain the two, re-enable the corresponding authentication and here is our configuration:</p>
+
+<pre><code>UsePAM yes # That's easy!
+ChallengeResponseAuthentication yes # To allow the client to discuss with the remote PAM
+KerberosAuthentication yes # We support it!
+
+AuthenticationMethods gssapi-with-mic,keyboard-interactive:pam
+
+RSAAuthentication no # We don't support it
+PubkeyAuthentication no # We don't support it
+PasswordAuthentication no # No basic password authentication
+</code></pre>
+
+<p>We still have a small problem as we didn't change our PAM configuration: our users will be asked to type their password. We just need to remove the password authentication and simply keep our second factor module in PAM:</p>
+
+<pre><code>auth       required     pam_2fa.so    [CERN-specific configuration]
+</code></pre>
+
+<p>Restarting sshd, and done!</p>
+
+<h3>
+<a id="authenticationmethods-adding-ssh-keys-support" class="anchor" href="#authenticationmethods-adding-ssh-keys-support" aria-hidden="true"><span class="octicon octicon-link"></span></a>AuthenticationMethods: adding SSH keys support</h3>
+
+<p>On top of Kerberos, we also want to support SSH keys. Looking at OpenSSH naming convention, the method for it is <code>publickey</code>. We just need to enable it and chain it to <code>keyboard-interactive:pam</code> and add it to the list of supported methods in our configuration:</p>
+
+<pre><code>UsePAM yes # That's easy!
+ChallengeResponseAuthentication yes # To allow the client to discuss with the remote PAM
+KerberosAuthentication yes # We support it!
+PubkeyAuthentication yes # We support it!
+
+AuthenticationMethods gssapi-with-mic,keyboard-interactive:pam publickey,keyboard-interactive:pam
+
+RSAAuthentication no # We don't support it
+PasswordAuthentication no # No basic password authentication
+</code></pre>
+
+<h3>
+<a id="authenticationmethods-adding-pam-support-" class="anchor" href="#authenticationmethods-adding-pam-support-" aria-hidden="true"><span class="octicon octicon-link"></span></a>AuthenticationMethods: adding PAM support ?</h3>
+
+<p>And now we are back to the beginning, supporting password-based authentication, but this time in addition to the other methods. Password-based authentication is using <code>keyboard-interactive:pam</code>, so if we were to follow the previous logic, we would use <code>keyboard-interactive:pam,keyboard-interactive:pam</code>. However, if we do so, we still only have one single PAM configuration in which we can:</p>
+
+<ul>
+<li>Ask for the second factor only: the normal password will never be asked, at most we can get the second factor twice...</li>
+<li>Ast for the password only: the second factor will never be asked, the password will be asked instead, even after kerberos and ssh key authentication</li>
+<li>Ask for both: this make password-authentication work (given that we only put <code>keyboard-interactive</code> once), but break Kerberos and ssh key authentication as the password will also be asked...</li>
+</ul>
+
+<p>There is no such thing as <code>keyboard-interactive:pam:sshdpassword</code> or <code>keyboard-interactive:pam:2fa</code>. There is only one configuration which is always called in the same environment. In the end, PAM can't differentiate the two cases we have: calling PAM after a successful authentication for the second factor or calling PAM for doing the whole authentication...</p>
+
+<h3>
+<a id="exposing-more-information-to-pam" class="anchor" href="#exposing-more-information-to-pam" aria-hidden="true"><span class="octicon octicon-link"></span></a>Exposing more information to PAM</h3>
+
+<p>In the end we have no choice but to patch OpenSSH to expose more information to PAM, allowing it to make the right decision. The patch is available on the <a href="https://bugzilla.mindrot.org/show_bug.cgi?id=2408">OpenSSH bug tracker</a> and <a href="https://github.com/CERN-CERT/openssh-portable">our Github</a>. We are also hosting it on here two versions that can be directly applied on RedHat sources:</p>
+
+<ul>
+<li>The <a href="openssh-6.6.1p1-expose-successful-auth-methods.patch">full version</a> (<a href="full/">atomic patches</a>), taken from the OpenSSH bugtracker and GitHub and adapted to sources from RedHat 7</li>
+<li>A <a href="openssh-6.6.1p1-expose-successful-auth-methods.simplified.patch">simplified version</a> (<a href="simplified/">atomic patches</a>): patching OpenSSH is always a risk, so we are simplifying the patch to make sure we understand it and keep it safe...</li>
+</ul>
+
+<p>This patch adds a new environment variable, SSH_USER_AUTH, which is exposed:</p>
+
+<ul>
+<li>During the authentication via the PAM environment. It contains the list of successful authentications methods so far.</li>
+<li>After the authentication, when a new shell is spawn, via the shell environment. It contains the list of authentications methods successfully used to login into the server.</li>
+</ul>
+
+<p>While the simplified version of the patch contains only a comma-separated list of these methods and sub-methods, the full version also includes:</p>
+
+<ul>
+<li>The public key fingerprint for key-based authentications</li>
+<li>The host public key fingerprint for host-based authentications</li>
+</ul>
+
+<p>We hope that one day, we will also be able to include more details about other methods, like for example the principal used for Kerberos authentication, but these would require more complex patches</p>
+
+<p>We hope that one day these patches will be integrated upstream, but for now, we need to maintain our own compiled version for CERN (links only accessible withing CERN):</p>
+
+<ul>
+<li>
+<a href="http://linuxsoft.cern.ch/internal/repos/sec7-qa/x86_64/os/Packages/">Compiled patched versions of OpenSSH for CERN Centos 7</a> with its <a href="http://linuxsoft.cern.ch/internal/repos/sec7-qa/source/SRPMS/openssh-6.6.1p1-22.el7.centos.src.rpm">sources</a>
+</li>
+<li>
+<a href="http://koji.cern.ch/koji/taskinfo?taskID=433853">Compiled patched versions of OpenSSH for Scientific Linux CERN 6</a> with its <a href="https://koji.cern.ch/kojifiles/work/tasks/3854/433854/openssh-6.6.1p1-22.el6.src.rpm">sources</a>
+</li>
+</ul>
+
+<h3>
+<a id="using-a-smart-pam-configuration" class="anchor" href="#using-a-smart-pam-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>Using a smart PAM configuration</h3>
+
+<p>With this patched version of OpenSSH, it is now possible to make decisions based on this environment variable.
+Using this variable is safe as it is only controlled by:</p>
+
+<ul>
+<li>sshd, that refreshes its value before any pam authentication call</li>
+<li>pam modules themselves during a single call, as they can modify the environment</li>
+</ul>
+
+<p>As we are using the simplified version of the patch, let's start with a simple check: the existence of a non-empty SSH_USER_AUTH variable in the PAM environment. A straightforward version of such a module is available on our <a href="https://github.com/CERN-CERT/pam_2fa/blob/master/pam_ssh_user_auth.c">GitHub</a>. This module will basically return two values: <em>PAM_SUCCESS</em> if there was any previously successful authentications and <em>PAM_IGNORE</em> if there was none. Based on this, we can write the following PAM configuration:</p>
+
+<pre><code>auth       [success=1 ignore=ignore default=die] pam_ssh_user_auth.so
+auth       substack     password-auth
+auth       required     pam_2fa.so    [CERN-specific configuration]
+</code></pre>
+
+<p>This configuration is simple, but not trivial to read, as the format is not simple, especially on the first line. This first line means that pam will call pam_ssh_user_auth.so and will:</p>
+
+<ul>
+<li>on PAM_SUCCESS (i.e. if there was <em>any</em> previous successful sshd authentication) skip the next line which contains the password authentication</li>
+<li>on PAM_IGNORE (i.e. if there was <em>no</em> previous successful sshd authentication) ignore the result and simply continue</li>
+<li>on any other value (bug?) just die</li>
+</ul>
+
+<p>We can ensure the behavior we want, that is running the 2nd factor after any first factor, by configuring SSHD in the following manner:</p>
+
+<pre><code>UsePAM yes # That's easy!
+ChallengeResponseAuthentication yes # To allow the client to discuss with the remote PAM
+KerberosAuthentication yes # We support it!
+PubkeyAuthentication yes # We support it!
+
+AuthenticationMethods gssapi-with-mic,keyboard-interactive:pam publickey,keyboard-interactive:pam keyboard-interactive:pam
+
+RSAAuthentication no # We don't support it
+PasswordAuthentication no # No basic password authentication
+</code></pre>
+
+<h3>
+<a id="protecting-the-second-factor" class="anchor" href="#protecting-the-second-factor" aria-hidden="true"><span class="octicon octicon-link"></span></a>Protecting the second factor</h3>
+
+<p>At CERN, we have another requirement: the second factor should never be asked is there was no first factor. This is due to the fact that one of the second factor we are using is based on SMS and we don't want malicious attackers to spam our users with SMS...</p>
+
+<p>Due to this constrain, we need a more complicated PAM configuration, which I won't explain here (consider it an exercise for the reader):</p>
+
+<pre><code>auth       [success=2 ignore=ignore default=die] pam_ssh_user_auth.so
+auth       substack     password-auth
+auth       [default=1]  pam_deny.so
+auth       required     pam_2fa.so    [CERN-specific configuration]
+</code></pre>
+
+<p>This new configuration will result in a single pam call resulting in:</p>
+
+<ul>
+<li>Password authentication (only) if there was no previous successful sshd authentication</li>
+<li>Second factor authentication (only) if there was any previous successful sshd authentication
+As a result, we need to require two successful <code>keyboard-interactive:pam</code> by themselves and not only one:</li>
+</ul>
+
+<pre><code>UsePAM yes # That's easy!
+ChallengeResponseAuthentication yes # To allow the client to discuss with the remote PAM
+KerberosAuthentication yes # We support it!
+PubkeyAuthentication yes # We support it!
+
+AuthenticationMethods gssapi-with-mic,keyboard-interactive:pam publickey,keyboard-interactive:pam keyboard-interactive:pam,keyboard-interactive:pam
+
+RSAAuthentication no # We don't support it
+PasswordAuthentication no # No basic password authentication
+</code></pre>
+
+<h3>
+<a id="acknowledgements" class="anchor" href="#acknowledgements" aria-hidden="true"><span class="octicon octicon-link"></span></a>Acknowledgements</h3>
+
+<p>We would like to thanks:</p>
+
+<ul>
+<li>György Demarcsek for his initial <a href="http://marc.info/?l=openssh-unix-dev&amp;m=143325381725555&amp;w=2">idea</a> and <a href="https://bugzilla.mindrot.org/show_bug.cgi?id=2408">patch</a>
+</li>
+<li>Damien Miller for his <a href="http://marc.info/?l=openssh-unix-dev&amp;m=143328980804529&amp;w=2">name and format suggestions</a>
+</li>
+</ul>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/CERN-CERT/pam_2fa">Pam 2fa</a> is maintained by <a href="https://github.com/CERN-CERT">CERN-CERT</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+  
+  </body>
+</html>
