@@ -28,7 +28,6 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     int retval;
     size_t resp_len = 0;
     char *resp = NULL, *otp = NULL;
-    const char *username = NULL;
     const char *authtok = NULL;
     auth_func selected_auth_func = NULL;
     _Bool gauth_ok = 0, sms_ok = 0, yk_ok = 0;
@@ -51,21 +50,11 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 	retval = PAM_AUTH_ERR;
 	goto done;
     }
-    //GET USERNAME
-    retval = pam_get_user(pamh, &username, NULL);
 
-    if (retval != PAM_SUCCESS) {
-	DBG(("Unable to retrieve username!"));
-	retval = PAM_AUTH_ERR;
-	goto done;
-    }
-
-    DBG(("username = %s", username));
-
-    user_cfg = get_user_config(pamh, cfg, username);
+    // Get User configuration
+    user_cfg = get_user_config(pamh, cfg);
     if(!user_cfg) {
-	pam_syslog(pamh, LOG_INFO, "Unable to get 2nd factors for user '%s'", username);
-	pam_error(pamh, "Unable to get 2nd factors for user '%s'", username);
+	pam_syslog(pamh, LOG_INFO, "Unable to get user configuration");
 	retval = PAM_AUTH_ERR;
 	goto done;
     }
@@ -101,7 +90,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
         //SHOW THE SELECTION MENU
         int i = 1;
 
-        pam_info(pamh, "Login for %s:\n", username);
+        pam_info(pamh, "Login for %s:\n", user_cfg->username);
 
         if(gauth_ok)
 	    pam_info(pamh, "        %d. Google Authenticator", i++);
@@ -114,7 +103,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
             retval = pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &resp, "\nOption (1-%d): ", menu_len);
 
             if (retval != PAM_SUCCESS) {
-        	pam_syslog(pamh, LOG_INFO, "Unable to get 2nd factors for user '%s'", username);
+        	pam_syslog(pamh, LOG_INFO, "Unable to get 2nd factors for user '%s'", user_cfg->username);
         	pam_error(pamh, "Unable to get user input");
         	retval = PAM_AUTH_ERR;
         	goto done;
@@ -147,8 +136,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     } else if (menu_len == 1) {
          selected_auth_func = menu_functions[1];
     } else {
-	pam_syslog(pamh, LOG_INFO, "No supported 2nd factor for user '%s'", username);
-	pam_error(pamh, "No supported 2nd factors for user '%s'", username);
+	pam_syslog(pamh, LOG_INFO, "No supported 2nd factor for user '%s'", user_cfg->username);
+	pam_error(pamh, "No supported 2nd factors for user '%s'", user_cfg->username);
 	retval = PAM_AUTH_ERR;
 	goto done;
     }

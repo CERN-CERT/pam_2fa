@@ -64,6 +64,7 @@ typedef struct {
 #define YK_PUBLICID_LEN 12
 
 typedef struct {
+    const char *username;
     char gauth_login[GAUTH_LOGIN_LEN + 1];
     char sms_mobile[SMS_MOBILE_LEN + 1];
     char **yk_publicids;
@@ -119,7 +120,7 @@ typedef int (*auth_func) (pam_handle_t * pamh, user_config * user_cfg, module_co
 int parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **ncfg);
 void free_config(module_config *cfg);
 
-user_config *get_user_config(pam_handle_t * pamh, const module_config *cfg, const char * username);
+user_config *get_user_config(pam_handle_t * pamh, const module_config *cfg);
 void free_user_config(user_config * user_cfg);
 
 int pam_2fa_drop_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struct passwd *pw);

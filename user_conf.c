@@ -5,8 +5,7 @@
 #include "pam_2fa.h"
 
 user_config *get_user_config(pam_handle_t * pamh,
-                             const module_config *cfg,
-                             const char * username)
+                             const module_config *cfg)
 {
     _Bool non_root;
     user_config *user_cfg = calloc(1, sizeof(user_config));
@@ -15,13 +14,22 @@ user_config *get_user_config(pam_handle_t * pamh,
         return NULL;
     }
 
-    non_root = strcmp(username, ROOT_USER);
+    if (pam_get_user(pamh, &user_cfg->username, NULL) != PAM_SUCCESS) {
+        DBG(("Unable to retrieve username!"));
+        goto fail;
+    }
+
+    DBG(("username = %s", user_cfg->username));
+
+    non_root = strcmp(user_cfg->username, ROOT_USER);
 
     if (cfg->ldap_enabled && non_root) {
 #ifdef HAVE_LDAP
         //GET 2nd FACTORS FROM LDAP
-        if (ldap_search_factors(pamh, cfg, username, user_cfg) < 0)
+        if (ldap_search_factors(pamh, cfg, user_cfg->username, user_cfg) < 0) {
+            pam_syslog(pamh, LOG_ERR, "LDAP request failed for user '%s'", user_cfg->username);
             goto fail;
+        }
 #else
 	DBG(("LDAP configured, but not compiled (should never happen!)"));
 #endif
@@ -30,15 +38,15 @@ user_config *get_user_config(pam_handle_t * pamh,
         struct passwd *user_entry = NULL;
         struct pam_2fa_privs p;
 
-        user_entry = pam_modutil_getpwnam(pamh, username);
+        user_entry = pam_modutil_getpwnam(pamh, user_cfg->username);
         if(!user_entry) {
-            pam_syslog(pamh, LOG_ERR, "Can't get passwd entry for '%s'", username);
+            pam_syslog(pamh, LOG_ERR, "Can't get passwd entry for '%s'", user_cfg->username);
             goto fail;
         }
 
 #ifdef HAVE_CURL
         if(cfg->gauth_enabled && non_root)
-            strncpy(user_cfg->gauth_login, username, GAUTH_LOGIN_LEN + 1);
+            strncpy(user_cfg->gauth_login, user_cfg->username, GAUTH_LOGIN_LEN + 1);
 #endif
 
         pam_2fa_drop_priv(pamh, &p, user_entry);
