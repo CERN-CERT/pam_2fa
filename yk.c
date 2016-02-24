@@ -110,7 +110,7 @@ int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cf
     return retval;
 }
 
-int yk_load_user_file(pam_handle_t *pamh, module_config *cfg, struct passwd *user_entry, char ***user_publicids)
+int yk_load_user_file(pam_handle_t *pamh, const module_config *cfg, struct passwd *user_entry, char ***user_publicids)
 {
     int fd, retval;
     ssize_t bytes_read = 0;

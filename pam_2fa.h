@@ -135,7 +135,7 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
 #endif
 
 #ifdef HAVE_YKCLIENT
-int yk_load_user_file(pam_handle_t *pamh, module_config *cfg, struct passwd *user_entry, char ***user_publicids);
+int yk_load_user_file(pam_handle_t *pamh, const module_config *cfg, struct passwd *user_entry, char ***user_publicids);
 int yk_get_publicid(pam_handle_t *pamh, char *buf, size_t *yk_id_pos, size_t *yk_id_len, char ***yk_publicids);
 void yk_free_publicids(char **publicids);
 
