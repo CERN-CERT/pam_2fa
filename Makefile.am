@@ -39,7 +39,7 @@ AM_CFLAGS += -fPIC
 libdir = $(PAMDIR)
 
 lib_LTLIBRARIES = pam_2fa.la pam_ssh_user_auth.la
-pam_2fa_la_SOURCES = sms.c priv.c module_conf.c pam_2fa.c user_conf.c
+pam_2fa_la_SOURCES = sms.c priv.c module_conf.c pam_2fa.c user_conf.c ssh_user_auth.c
 pam_2fa_la_CFLAGS = $(AM_CFLAGS)
 pam_2fa_la_LIBADD = $(AM_LDFLAGS) -lpam
 pam_2fa_la_LDFLAGS = -module -avoid-version
@@ -62,7 +62,7 @@ pam_2fa_la_CFLAGS += $(LIBYKCLIENT_CFLAGS)
 pam_2fa_la_LIBADD += $(LIBYKCLIENT_LIBS)
 endif
 
-pam_ssh_user_auth_la_SOURCES = pam_ssh_user_auth.c
+pam_ssh_user_auth_la_SOURCES = pam_ssh_user_auth.c ssh_user_auth.c
 pam_ssh_user_auth_la_CFLAGS = $(AM_CFLAGS)
 pam_ssh_user_auth_la_LIBADD = $(AM_LDFLAGS) -lpam
 pam_ssh_user_auth_la_LDFLAGS = -module -avoid-version

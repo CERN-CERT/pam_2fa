@@ -17,6 +17,8 @@
 #define DEBUG
 #include <security/_pam_macros.h>
 
+#include "ssh_user_auth.h"
+
 PAM_EXTERN int pam_sm_setcred(pam_handle_t * pamh, int flags, int argc,
 			      const char **argv)
 {
@@ -45,15 +47,13 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
         D((" debug => %d", debug));
     }
 
-    ssh_user_auth = pam_getenv(pamh, "SSH_USER_AUTH");
-    if (ssh_user_auth == NULL || strlen(ssh_user_auth) == 0) {
+    ssh_user_auth = get_ssh_user_auth(pamh, debug);
+    if (ssh_user_auth == NULL) {
         /* There was no SSH_USER_AUTH in the environment, which can be caused by:
          *  - This feature not being supported by the installed version of OpenSSH
          *  - No previously successful authentications
          *  Here, we will assume that we are in the latter case
          */
-        if (debug)
-            D(("pam_ssh_user_auth: no SSH_USER_AUTH or empty SSH_USER_AUTH: ignoring"));
         return PAM_IGNORE;
     }
 
