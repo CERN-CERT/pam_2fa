@@ -55,7 +55,7 @@ typedef struct {
     unsigned int yk_id;
     char *yk_key;
     char *yk_user_file;
-
+    char *domain;
 } module_config;
 
 
@@ -65,6 +65,7 @@ typedef struct {
 
 typedef struct {
     const char *username;
+    _Bool username_allocated;
     char gauth_login[GAUTH_LOGIN_LEN + 1];
     char sms_mobile[SMS_MOBILE_LEN + 1];
     char **yk_publicids;

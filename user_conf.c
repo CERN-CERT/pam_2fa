@@ -3,11 +3,13 @@
 #endif
 
 #include "pam_2fa.h"
+#include "ssh_user_auth.h"
 
 user_config *get_user_config(pam_handle_t * pamh,
                              const module_config *cfg)
 {
     _Bool non_root;
+    char *kerberos_principal, *kerberos_domain;
     user_config *user_cfg = calloc(1, sizeof(user_config));
 
     if(!user_cfg) {
@@ -22,6 +24,19 @@ user_config *get_user_config(pam_handle_t * pamh,
     DBG(("username = %s", user_cfg->username));
 
     non_root = strcmp(user_cfg->username, ROOT_USER);
+
+    if (!non_root && cfg->domain != NULL) {
+        kerberos_principal = extract_details(pamh, cfg->debug, "gssapi-with-mic");
+        if (kerberos_principal != NULL) {
+            kerberos_domain = strchr(kerberos_principal, '@');
+            if (kerberos_domain != NULL && strcmp(kerberos_domain + 1, cfg->domain) == 0) {
+                *kerberos_domain = '\0';
+                user_cfg->username = kerberos_principal;
+                user_cfg->username_allocated = 1;
+                non_root = strcmp(user_cfg->username, ROOT_USER);
+            }
+        }
+    }
 
     if (cfg->ldap_enabled && non_root) {
 #ifdef HAVE_LDAP
@@ -66,6 +81,8 @@ fail:
 void free_user_config(user_config * user_cfg)
 {
     if(user_cfg) {
+        if (user_cfg->username_allocated)
+            free((char*)user_cfg->username);
 #ifdef HAVE_YKCLIENT
         yk_free_publicids(user_cfg->yk_publicids);
 #endif

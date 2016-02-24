@@ -40,6 +40,8 @@ free_config(module_config *cfg)
             free(cfg->yk_key);
         if (cfg->yk_user_file)
             free(cfg->yk_user_file);
+        if (cfg->domain)
+            free(cfg->domain);
         free(cfg);
     }
 }
@@ -135,6 +137,9 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
             STRDUP_OR_DIE(cfg->yk_user_file, argv[i] + 13);
 #endif
 
+        } else if (strncmp(argv[i], "domain=", 7) == 0) {
+            STRDUP_OR_DIE(cfg->domain, argv[i] + 7);
+
         } else {
             pam_syslog(pamh, LOG_ERR, "Invalid option: %s", argv[i]);
             return CONFIG_ERROR;
@@ -211,6 +216,7 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
     DBG(("yk_id => %s",           cfg->yk_id));
     DBG(("yk_key => %s",          cfg->yk_key));
     DBG(("yk_user_file => %s",    cfg->yk_user_file));
+    DBG(("domain => %s",          cfg->domain));
 
     if (!cfg->gauth_enabled && !cfg->sms_enabled && !cfg->yk_enabled) {
         pam_syslog(pamh, LOG_ERR, "No configured 2nd factors");
