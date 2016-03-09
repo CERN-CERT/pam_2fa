@@ -19,7 +19,7 @@ You need the following packages installed in order to properly build, install an
   * Required:                          libpam-dev
   * For LDAP support:                  libldap, libldap-dev
   * For Google Authenticator support:  libcurl, libcurl-dev
-  * For Yubikey support:               libykclient, libykclient-dev (and libcurl, libcurl-dev)
+  * For Yubikey support:               libykclient or libykclient3, libykclient-dev (and libcurl, libcurl-dev)
 
 ## Building
 
