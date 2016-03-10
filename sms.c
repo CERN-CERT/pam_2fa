@@ -18,7 +18,6 @@ void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg,
                         struct passwd *user_entry, user_config *user_cfg)
 {
     int fd, retval;
-    struct stat st;
     char filename[1024];
     char buf[SMS_MOBILE_LEN+2];
     char *buf_pos;
@@ -27,15 +26,19 @@ void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg,
 
     snprintf(filename, 1024, "%s/%s", user_entry->pw_dir, cfg->sms_user_file);
 
-    retval = stat(filename, &st);
-    if (retval < 0) {
-        pam_syslog(pamh, LOG_DEBUG, "Can't get stats of file '%s'", filename);
-        return;
-    }
+    {
+      // check the exitence of the file
+      struct stat st;
+      retval = stat(filename, &st);
+      if (retval < 0) {
+          pam_syslog(pamh, LOG_DEBUG, "Can't get stats of file '%s'", filename);
+          return;
+      }
 
-    if (!S_ISREG(st.st_mode)) {
-        pam_syslog(pamh, LOG_ERR, "Not a regular file '%s'", filename);
-        return;
+      if (!S_ISREG(st.st_mode)) {
+          pam_syslog(pamh, LOG_ERR, "Not a regular file '%s'", filename);
+          return;
+      }
     }
 
     fd = open(filename, O_RDONLY);
