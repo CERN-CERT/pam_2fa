@@ -35,6 +35,11 @@ user_config *get_user_config(pam_handle_t * pamh,
                 user_cfg->username = kerberos_principal;
                 user_cfg->username_allocated = 1;
                 non_root = strcmp(user_cfg->username, ROOT_USER);
+            } else {
+              pam_syslog(pamh, LOG_ERR, "Kerberos principal does not have expected domain, ignoring : '%s'",
+                         kerberos_principal);
+              // cleanup char* returned by extract_details and that we do not use
+              free(kerberos_principal);
             }
         }
     }
