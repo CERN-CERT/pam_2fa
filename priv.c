@@ -104,7 +104,7 @@ int pam_2fa_drop_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struct 
     return OK;
 }
 
-int pam_2fa_regain_priv(pam_handle_t *pamh, struct pam_2fa_privs *p)
+int pam_2fa_regain_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struct passwd *pw)
 {
     switch (p->is_dropped) {
         case PRIV_MAGIC_DONOTHING:
@@ -119,6 +119,11 @@ int pam_2fa_regain_priv(pam_handle_t *pamh, struct pam_2fa_privs *p)
             return ERROR;
         }
 
+    /*
+     * We should care to leave process credentials in consistent state.
+     * That is, e.g. if change_uid() succeeded but change_gid() failed,
+     * we should try to restore uid.
+     */
     if (change_uid(p->old_uid, NULL)) {
         pam_syslog(pamh, LOG_ERR, "pam_2fa_regain_priv: change_uid failed: %m");
         cleanup(p);
@@ -126,11 +131,14 @@ int pam_2fa_regain_priv(pam_handle_t *pamh, struct pam_2fa_privs *p)
     }
     if (change_gid(p->old_gid, NULL)) {
         pam_syslog(pamh, LOG_ERR, "pam_2fa_regain_priv: change_gid failed: %m");
+        (void)change_uid(pw->pw_uid, NULL);
         cleanup(p);
         return ERROR;
     }
     if (setgroups((size_t) p->nbgrps, p->grplist)) {
         pam_syslog(pamh, LOG_ERR, "pam_2fa_regain_priv: setgroups failed: %m");
+        (void)change_uid(pw->pw_uid, NULL);
+        (void)change_gid(pw->pw_gid, NULL);
         cleanup(p);
         return ERROR;
     }

@@ -125,7 +125,7 @@ user_config *get_user_config(pam_handle_t * pamh, const module_config *cfg);
 void free_user_config(user_config * user_cfg);
 
 int pam_2fa_drop_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struct passwd *pw);
-int pam_2fa_regain_priv(pam_handle_t *pamh, struct pam_2fa_privs *p);
+int pam_2fa_regain_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struct passwd *pw);
 
 #ifdef HAVE_LDAP
 int ldap_search_factors(pam_handle_t *pamh, const module_config * cfg, const char *username, user_config *user_cfg);
