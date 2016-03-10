@@ -5,8 +5,14 @@
 #include "pam_2fa.h"
 
 // local function prototypes
-void free_and_reset_str(char** str);
-int strdup_or_die(char** dst, const char* src);
+static void free_and_reset_str(char** str);
+static int strdup_or_die(char** dst, const char* src);
+static int raw_parse_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq, char** dst);
+static int parse_str_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq, char** dst);
+static int parse_int_option(pam_handle_t *pamh, const char* buf, const char* option, int* dst, int min);
+static int parse_sizet_option(pam_handle_t *pamh, const char* buf, const char* option, size_t* dst, size_t min);
+static int parse_uint_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq,
+                             unsigned int* dst, unsigned int min);
 
 /// convenient function for freeing a string ans reset the pointer to 0
 void
@@ -46,8 +52,109 @@ free_config(module_config *cfg)
 /// calls strdup and returns whether we had a memory error
 int strdup_or_die(char** dst, const char* src)
 {
-  *dst = strdup(src);
-  return *dst ? 0 : 1;
+    *dst = strdup(src);
+    return *dst ? 0 : -1;
+}
+
+/**
+ * Handles the basic parsing of a given option.
+ * @arg buf is the buffer to be parsed
+ * @arg opt_name_with_eq is the option name we are looking for (including equal sign)
+ * Note that dst has to be freed by the caller in case of 0 return code
+ * returns 0 if the option was not found
+ * returns -1 if an error occured
+ * returns the position of the start of the value in the buffer otherwise
+ */
+int raw_parse_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq, char** dst)
+{
+    size_t opt_len = strlen(opt_name_with_eq);
+    if (0 == strncmp(buf, opt_name_with_eq, opt_len)) {
+        if (dst && *dst) {
+            pam_syslog(pamh, LOG_ERR,
+                       "Duplicated option : %s. Only first one is taken into account",
+                       opt_name_with_eq);
+            return -1;
+        } else {
+          return (int)opt_len;
+        }
+    }
+    return 0;
+}
+
+/**
+ * Handles the parsing of a given option.
+ * @arg buf is the buffer to be parsed
+ * @arg opt_name_with_eq is the option name we are looking for (including equal sign)
+ * @arg dst is the destination buffer for the value found if any.
+ * Note that dst has to be freed by the caller in case of 0 return code
+ * returns 0 if the option was not found in the buffer
+ * returns 1 if the option was found in buffer and parsed properly
+ * returns -1 in case of error
+ */
+int parse_str_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq, char** dst)
+{
+  int value_pos = raw_parse_option(pamh, buf, opt_name_with_eq, dst);
+    if (value_pos > 0) {
+        if (strdup_or_die(dst, buf+value_pos)) {
+            return -1;
+        }
+        return 0;
+    }
+    return value_pos;
+}
+
+/**
+ * Handles the parsing of a given option with integer value.
+ * @arg buf is the buffer to be parsed
+ * @arg opt_name_with_eq is the option name we are looking for (including equal sign)
+ * @arg dst is the destination for the value found if any.
+ * @arg min is the minimum value expected (if not 0). If less is given, we will use this number
+ * returns 0 if the option was not found in the buffer
+ * returns 1 if the option was found in buffer and parsed properly
+ * returns -1 in case of error
+ */
+int parse_int_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq,
+                     int* dst, int min)
+{
+  int value_pos = raw_parse_option(pamh, buf, opt_name_with_eq, 0);
+    if (value_pos > 0) {
+        sscanf(buf+value_pos, "%d", dst);
+        if (min && *dst < min) *dst = min;
+        return 0;
+    }
+    return value_pos;
+}
+
+/**
+ * Handles the parsing of a given option with size_t value.
+ * See parse_int_option for details of the arguments
+ */
+int parse_sizet_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq,
+                       size_t* dst, size_t min)
+{
+  int value_pos = raw_parse_option(pamh, buf, opt_name_with_eq, 0);
+    if (value_pos > 0) {
+        sscanf(buf+value_pos, "%zu", dst);
+        if (min && *dst < min) *dst = min;
+        return 0;
+    }
+    return value_pos;
+}
+
+/**
+ * Handles the parsing of a given option with unsigned int value.
+ * See parse_int_option for details of the arguments
+ */
+int parse_uint_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq,
+                      unsigned int* dst, unsigned int min)
+{
+  int value_pos = raw_parse_option(pamh, buf, opt_name_with_eq, 0);
+    if (value_pos > 0) {
+        sscanf(buf+value_pos, "%d", dst);
+        if (min && *dst < min) *dst = min;
+        return 0;
+    }
+    return value_pos;
 }
 
 int
@@ -64,90 +171,50 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
     }
 
     for (i = 0; i < argc; ++i) {
-
-        if (strcmp(argv[i], "debug") == 0) {
-            cfg->debug = 1;
-
-        } else if (strncmp(argv[i], "max_retry=", 10) == 0) {
-            sscanf(argv[i], "max_retry=%d", &cfg->retry);
-            if (cfg->retry < MAX_RETRY)
-                cfg->retry = MAX_RETRY;
-
-        } else if (strncmp(argv[i], "capath=", 7) == 0) {
-          mem_error = strdup_or_die(&cfg->capath, argv[i] + 7);
-
-        } else if (strncmp(argv[i], "otp_length=", 11) == 0) {
-            sscanf(argv[i], "otp_length=%zu", &cfg->otp_length);
-            if (cfg->otp_length < OTP_LENGTH)
-                cfg->otp_length = OTP_LENGTH;
-
+        int retval = strcmp(argv[i], "debug");
+        if (!retval) cfg->debug = 1;
+        retval = parse_int_option(pamh, argv[i], "max_retry=",
+                                  &cfg->retry, MAX_RETRY);
+        if (retval <= 0) retval = parse_sizet_option(pamh, argv[i], "otp_length=",
+                                                     &cfg->otp_length, OTP_LENGTH);
+        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "capath=", &cfg->capath);
 #ifdef HAVE_LDAP
-        } else if (strncmp(argv[i], "ldap_uri=", 9) == 0) {
-            mem_error = strdup_or_die(&cfg->ldap_uri, argv[i] + 9);
-
-        } else if (strncmp(argv[i], "ldap_attr=", 10) == 0) {
-            mem_error = strdup_or_die(&cfg->ldap_attr, argv[i] + 10);
-
-        } else if (strncmp(argv[i], "ldap_basedn=", 12) == 0) {
-            mem_error = strdup_or_die(&cfg->ldap_basedn, argv[i] + 12);
+        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "ldap_uri=", &cfg->ldap_uri);
+        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "ldap_attr=", &cfg->ldap_attr);
+        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "ldap_basedn=", &cfg->ldap_basedn);
 #endif
-
 #ifdef HAVE_CURL
-        } else if (strncmp(argv[i], "gauth_prefix=", 13) == 0) {
-            mem_error = strdup_or_die(&cfg->gauth_prefix, argv[i] + 13);
-
-        } else if (strncmp(argv[i], "gauth_ws_uri=", 13) == 0) {
-            mem_error = strdup_or_die(&cfg->gauth_ws_uri, argv[i] + 13);
-
-        } else if (strncmp(argv[i], "gauth_ws_action=", 16) == 0) {
-            mem_error = strdup_or_die(&cfg->gauth_ws_action, argv[i] + 16);
+        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "gauth_prefix=", &cfg->gauth_prefix);
+        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "gauth_ws_uri=", &cfg->gauth_ws_uri);
+        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "gauth_ws_action=", &cfg->gauth_ws_action);
 #endif
-
-        } else if (strncmp(argv[i], "sms_prefix=", 11) == 0) {
-            mem_error = strdup_or_die(&cfg->sms_prefix, argv[i] + 11);
-
-        } else if (strncmp(argv[i], "sms_gateway=", 12) == 0) {
-            mem_error = strdup_or_die(&cfg->sms_gateway, argv[i] + 12);
-
-        } else if (strncmp(argv[i], "sms_subject=", 12) == 0) {
-            mem_error = strdup_or_die(&cfg->sms_subject, argv[i] + 12);
-
-        } else if (strncmp(argv[i], "sms_text=", 9) == 0) {
-            mem_error = strdup_or_die(&cfg->sms_text, argv[i] + 9);
-
-        } else if (strncmp(argv[i], "sms_user_file=", 14) == 0) {
-            mem_error = strdup_or_die(&cfg->sms_text, argv[i] + 14);
-
+        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "sms_prefix=", &cfg->sms_prefix);
+        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "sms_gateway=", &cfg->sms_gateway);
+        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "sms_subject=", &cfg->sms_subject);
+        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "sms_text=", &cfg->sms_text);
+        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "sms_user_file=", &cfg->sms_user_file);
 #ifdef HAVE_YKCLIENT
-        } else if (strncmp(argv[i], "yk_prefix=", 10) == 0) {
-            mem_error = strdup_or_die(&cfg->yk_prefix, argv[i] + 10);
-
-        } else if (strncmp(argv[i], "yk_uri=", 7) == 0) {
-            mem_error = strdup_or_die(&cfg->yk_uri, argv[i] + 7);
-
-        } else if (strncmp(argv[i], "yk_id=", 6) == 0) {
-            sscanf(argv[i], "yk_id=%d", &cfg->yk_id);
-
-        } else if (strncmp(argv[i], "yk_key=", 7) == 0) {
-            mem_error = strdup_or_die(&cfg->yk_key, argv[i] + 7);
-
-        } else if (strncmp(argv[i], "yk_user_file=", 13) == 0) {
-            mem_error = strdup_or_die(&cfg->yk_user_file, argv[i] + 13);
+        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "yk_prefix=", &cfg->yk_prefix);
+        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "yk_uri=", &cfg->yk_uri);
+        if (retval <= 0) retval = parse_uint_option(pamh, argv[i], "yk_id=", &cfg->yk_id, 0);
+        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "yk_key=", &cfg->yk_key);
+        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "yk_user_file=", &cfg->yk_user_file);
 #endif
+        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "domain=", &cfg->domain);
 
-        } else if (strncmp(argv[i], "domain=", 7) == 0) {
-            mem_error = strdup_or_die(&cfg->domain, argv[i] + 7);
-
-        } else {
+        if (0 == retval) {
             pam_syslog(pamh, LOG_ERR, "Invalid option: %s", argv[i]);
             return CONFIG_ERROR;
+        } else if (retval < 0) {
+            mem_error = retval;
+            break;
         }
     }
 
     //DEFAULT VALUES
-    if (!cfg->retry)
+    if (!cfg->retry &&  !mem_error)
         cfg->retry = MAX_RETRY;
-    if (!cfg->otp_length)
+    if (!cfg->otp_length &&  !mem_error)
         cfg->otp_length = OTP_LENGTH;
     if (!cfg->sms_subject &&  !mem_error)
         mem_error = strdup_or_die(&cfg->sms_subject, SMS_SUBJECT);
