@@ -151,7 +151,8 @@ int yk_load_user_file(pam_handle_t *pamh, const module_config *cfg, struct passw
         buf_pos = buf;
 
         while((buf_next_line = strchr(buf_pos, '\n'))) {
-            *(buf_next_line++) = 0;
+            *(buf_next_line) = 0;
+            buf_next_line++;
             retval = yk_get_publicid(pamh, buf_pos, &yk_id_pos, &yk_id_len, &yk_publicids);
             if(retval != OK) {
                 yk_free_publicids(yk_publicids);
@@ -214,7 +215,8 @@ int yk_get_publicid(pam_handle_t *pamh, char *buf, size_t *yk_id_pos, size_t *yk
 
             buf[YK_PUBLICID_LEN] = 0;
             strncpy((*yk_publicids)[*yk_id_pos], buf, YK_PUBLICID_LEN + 1);
-            (*yk_publicids)[++*yk_id_pos] = NULL;
+            ++(*yk_id_pos);
+            (*yk_publicids)[*yk_id_pos] = NULL;
 
         } else {
             pam_syslog(pamh, LOG_WARNING, "Invalid yubikey public id: %s", buf);
