@@ -162,12 +162,12 @@ int yk_load_user_file(pam_handle_t *pamh, const module_config *cfg, struct passw
             buf_pos = buf_next_line;
         }
 
-        buf_len = strlen(buf_pos);
-        memmove(buf, buf_pos, buf_len + 1);
-        buf_pos = buf + buf_len;
+        buf_remaining_len = strlen(buf_pos);
+        memmove(buf, buf_pos, buf_remaining_len + 1);
+        buf_pos = buf + buf_remaining_len;
     }
 
-    if(buf_len) {
+    if(buf_remaining_len) {
         retval = yk_get_publicid(pamh, buf_pos, &yk_id_pos, &yk_id_len, &yk_publicids);
         if(retval != OK) {
             yk_free_publicids(yk_publicids);
