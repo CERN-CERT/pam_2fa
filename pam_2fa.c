@@ -35,8 +35,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     retval = pam_get_item(pamh, PAM_AUTHTOK, (const void **) &authtok);
     if (retval != PAM_SUCCESS || (authtok != NULL && !strcmp(authtok, AUTHTOK_INCORRECT))) {
         DBG(("Previous authentication failed, let's stop here!"));
-	retval = PAM_AUTH_ERR;
-	goto done;
+	return PAM_AUTH_ERR;
     }
 
     retval = parse_config(pamh, argc, argv, &cfg);
@@ -46,17 +45,16 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
         DBG(("Invalid configuration"));
 	pam_syslog(pamh, LOG_ERR, "Invalid parameters to pam_2fa module");
 	pam_error(pamh, "Sorry, 2FA Pam Module is misconfigured, please contact admins!\n");
-
-	retval = PAM_AUTH_ERR;
-	goto done;
+        return PAM_AUTH_ERR;
     }
 
     // Get User configuration
     user_cfg = get_user_config(pamh, cfg);
     if(!user_cfg) {
 	pam_syslog(pamh, LOG_INFO, "Unable to get user configuration");
-	retval = PAM_AUTH_ERR;
-	goto done;
+        // cleanup
+        free_config(cfg);
+	return PAM_AUTH_ERR;
     }
 
     auth_func menu_functions[4] = { 0, 0, 0, 0 };
@@ -99,6 +97,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
         if(yk_ok)
 	    pam_info(pamh, "        %d. Yubikey", i);
     
+        retval = OK;
         while (!selected_auth_func) {
             retval = pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &resp, "\nOption (1-%d): ", menu_len);
 
@@ -106,7 +105,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
         	pam_syslog(pamh, LOG_INFO, "Unable to get 2nd factors for user '%s'", user_cfg->username);
         	pam_error(pamh, "Unable to get user input");
         	retval = PAM_AUTH_ERR;
-        	goto done;
+		break;
             }
     
             resp_len = resp ? strlen(resp) : 0;
@@ -135,18 +134,19 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
         }
     } else if (menu_len == 1) {
          selected_auth_func = menu_functions[1];
+         retval = OK;
     } else {
 	pam_syslog(pamh, LOG_INFO, "No supported 2nd factor for user '%s'", user_cfg->username);
 	pam_error(pamh, "No supported 2nd factors for user '%s'", user_cfg->username);
 	retval = PAM_AUTH_ERR;
-	goto done;
     }
 
+    if (retval == OK) {
+        // CALL THE CORRESPONDING AUTHENTICATION METHOD
+        retval = selected_auth_func(pamh, user_cfg, cfg, otp);
+    }
 
-    //CALL THE CORRESPONDING AUTHENTICATION METHOD
-    retval = selected_auth_func(pamh, user_cfg, cfg, otp);
-
-done:
+    // final cleanup
     free_user_config(user_cfg);
     free_config(cfg);
     return retval;
