@@ -18,7 +18,8 @@ user_config *get_user_config(pam_handle_t * pamh,
 
     if (pam_get_user(pamh, &user_cfg->username, NULL) != PAM_SUCCESS) {
         DBG(("Unable to retrieve username!"));
-        goto fail;
+        free(user_cfg);
+        return NULL;
     }
 
     DBG(("username = %s", user_cfg->username));
@@ -43,7 +44,8 @@ user_config *get_user_config(pam_handle_t * pamh,
         //GET 2nd FACTORS FROM LDAP
         if (ldap_search_factors(pamh, cfg, user_cfg->username, user_cfg) < 0) {
             pam_syslog(pamh, LOG_ERR, "LDAP request failed for user '%s'", user_cfg->username);
-            goto fail;
+            free(user_cfg);
+            return NULL;
         }
 #else
 	DBG(("LDAP configured, but not compiled (should never happen!)"));
@@ -56,7 +58,8 @@ user_config *get_user_config(pam_handle_t * pamh,
         user_entry = pam_modutil_getpwnam(pamh, user_cfg->username);
         if(!user_entry) {
             pam_syslog(pamh, LOG_ERR, "Can't get passwd entry for '%s'", user_cfg->username);
-            goto fail;
+            free(user_cfg);
+            return NULL;
         }
 
 #ifdef HAVE_CURL
@@ -73,9 +76,6 @@ user_config *get_user_config(pam_handle_t * pamh,
     }
 
     return user_cfg;
-fail:
-    free(user_cfg);
-    return NULL;
 }
 
 void free_user_config(user_config * user_cfg)
