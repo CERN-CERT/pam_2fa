@@ -42,7 +42,7 @@ static void cleanup(struct pam_2fa_privs *p)
 int pam_2fa_drop_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struct passwd *pw)
 {
     int res;
-    bzero(p, sizeof(struct pam_2fa_privs));
+    memset(p, 0, sizeof(struct pam_2fa_privs));
 
     /*
      * If not root, we can do nothing.

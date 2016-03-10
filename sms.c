@@ -127,7 +127,7 @@ int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * 
 	}
     }
 
-    bzero(code, cfg->otp_length + 1);
+    memset(code, 0, cfg->otp_length + 1);
     retval = retval == OK ? PAM_SUCCESS : PAM_AUTH_ERR;
     return retval;
 }

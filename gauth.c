@@ -117,7 +117,7 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
             }
 
             snprintf(http_request, HTTP_BUF_LEN, SOAP_REQUEST_TEMPL, user_cfg->gauth_login, otp);
-            bzero(otp, cfg->otp_length);
+            memset(otp, 0, cfg->otp_length);
             free(otp);
             otp = NULL;
 
@@ -129,7 +129,7 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
             }
 
             retval = curl_easy_perform(curlh);
-            bzero(http_request, HTTP_BUF_LEN);
+            memset(http_request, 0, HTTP_BUF_LEN);
 
             switch (retval) {
             case 0:
