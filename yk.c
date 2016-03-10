@@ -12,23 +12,22 @@
 
 int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp) {
     ykclient_t *ykc = NULL;
-    char **publicid = NULL;
     int retval = 0, trial = 0;
 
     retval = ykclient_init(&ykc);
     if (retval != YKCLIENT_OK) {
 	DBG(("ykclient_init() failed (%d): %s", retval,
 	     ykclient_strerror(retval)));
-	retval = PAM_AUTHINFO_UNAVAIL;
-	goto done;
+	return PAM_AUTH_ERR;
     }
 
     retval = ykclient_set_client_hex(ykc, cfg->yk_id, cfg->yk_key);
     if (retval != YKCLIENT_OK) {
 	DBG(("ykclient_set_client_b64() failed (%d): %s", retval,
 	     ykclient_strerror(retval)));
-	retval = PAM_AUTHINFO_UNAVAIL;
-	goto done;
+        // cleanup
+        ykclient_done(&ykc);
+	return PAM_AUTH_ERR;
     }
 
     if (cfg->yk_key)
@@ -40,9 +39,9 @@ int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cf
     if (cfg->yk_uri)
 	ykclient_set_url_template(ykc, cfg->yk_uri);
 
-    //GET USER INPUT
+    // GET USER INPUT
     retval = ERROR;
-    for (trial = 0; retval != OK && trial < cfg->retry; ++trial) {
+    for (trial = 0; trial < cfg->retry; ++trial) {
         if(!otp)
 	    pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &otp, "Yubikey: ");
 
@@ -54,42 +53,46 @@ int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cf
 	    if (strlen(otp) != YK_OTP_LEN) {
 		DBG(("INCORRRECT code from user!"));
 	        pam_syslog(pamh, LOG_INFO, "Yubikey OTP is incorrect: %s", otp);
-		retval = ERROR;
+		retval = PAM_AUTH_ERR;
 		free(otp);
                 otp = NULL;
 		continue;
 	    }
 
+            int keyNotFound = 1;
             if (user_cfg->yk_publicids) {
-                for(retval = 1, publicid = user_cfg->yk_publicids; retval && *publicid; ++publicid)
-                    retval = strncmp(otp, *publicid, YK_PUBLICID_LEN);
-            } else {
-                retval = -1;
+                char **publicid = NULL;
+                for(publicid = user_cfg->yk_publicids;
+                    keyNotFound && *publicid;
+                    ++publicid) {
+                    keyNotFound = strncmp(otp, *publicid, YK_PUBLICID_LEN);
+                }
             }
 
-	    if (retval != 0) {
+	    if (keyNotFound) {
 		DBG(("INCORRECT yubikey public ID"));
 	        pam_syslog(pamh, LOG_INFO, "Yubikey OTP doesn't match user public ids");
-		retval = ERROR;
+		retval = PAM_AUTH_ERR;
 		free(otp);
                 otp = NULL;
 		continue;
 	    }
 
-	    retval = ykclient_request(ykc, otp);
-	    DBG(("ykclient return value (%d): %s", retval, ykclient_strerror(retval)));
+	    int yk_server_retval = ykclient_request(ykc, otp);
+	    DBG(("ykclient return value (%d): %s",
+                 yk_server_retval, ykclient_strerror(yk_server_retval)));
 	    free(otp);
             otp = NULL;
 
-	    switch (retval) {
+	    switch (yk_server_retval) {
 	    case YKCLIENT_OK:
-		retval = OK;
+		retval = PAM_SUCCESS;
 		break;
 
 	    default:
 	        pam_syslog(pamh, LOG_INFO, "Yubikey server response: %s (%d)", ykclient_strerror(retval), retval);
 	        pam_prompt(pamh, PAM_ERROR_MSG, NULL, "%s", ykclient_strerror(retval));
-		retval = ERROR;
+		retval = PAM_AUTH_ERR;
 		break;
 	    }
 	} else {
@@ -98,15 +101,11 @@ int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cf
                 otp = NULL;
             }
 	    pam_syslog(pamh, LOG_INFO, "No user input!");
-	    retval = ERROR;
+	    retval = PAM_AUTH_ERR;
 	}
     }
 
-  done:
-
-    if(ykc) ykclient_done(&ykc);
-
-    retval = retval == OK ? PAM_SUCCESS : PAM_AUTH_ERR;
+    ykclient_done(&ykc);
     return retval;
 }
 
