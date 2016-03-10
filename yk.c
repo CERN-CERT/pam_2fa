@@ -117,21 +117,23 @@ int yk_load_user_file(pam_handle_t *pamh, const module_config *cfg, struct passw
     size_t yk_id_pos = 0, yk_id_len = 0;
     char filename[1024], buf[2048];
     char *buf_pos = NULL, *buf_next_line = NULL;
-    struct stat st;
     char **yk_publicids = NULL;
     size_t buf_len = 0, buf_remaining_len = 0;
 
     snprintf(filename, 1024, "%s/%s", user_entry->pw_dir, cfg->yk_user_file);
 
-    retval = stat(filename, &st);
-    if(retval < 0) {
+    {
+      // check the exitence of the file
+      struct stat st;
+      retval = stat(filename, &st);
+      if(retval < 0) {
         pam_syslog(pamh, LOG_ERR, "Can't get stats of file '%s'", filename);
         return ERROR;
-    }
-
-    if(!S_ISREG(st.st_mode)) {
+      }
+      if(!S_ISREG(st.st_mode)) {
         pam_syslog(pamh, LOG_ERR, "Not a regular file '%s'", filename);
         return ERROR;
+      }
     }
 
     fd = open(filename, O_RDONLY);
