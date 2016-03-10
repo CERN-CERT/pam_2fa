@@ -52,7 +52,7 @@ void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg,
 
     while ((bytes_read = read(fd, buf_pos, buf_rem)) > 0) {
         buf_pos += (size_t)bytes_read; // This is always > 0 by construct
-        buf_rem = (size_t)((ssize_t)bytes_read - bytes_read);
+        buf_rem = (size_t)((ssize_t)buf_rem - bytes_read);
         *buf_pos = 0;
         if (buf_rem == 0)
             break;
