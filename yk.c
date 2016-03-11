@@ -9,6 +9,11 @@
 
 #include "pam_2fa.h"
 
+int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
+
+const auth_mod yk_auth = {
+    .do_auth = &yk_auth_func
+};
 
 int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp) {
     ykclient_t *ykc = NULL;

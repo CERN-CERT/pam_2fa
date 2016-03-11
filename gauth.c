@@ -20,6 +20,12 @@ static size_t writefunc_curl (char *ptr, size_t size, size_t nmemb, void *userda
 static int cleanup (char* otp, CURL *curlh, struct curl_slist *header_list);
 static int check_curl_ret(int retval, char* curl_error, pam_handle_t * pamh, module_config * cfg);
 
+int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
+
+const auth_mod gauth_auth = {
+    .do_auth = &gauth_auth_func
+};
+
 /**
  * cleans up memory allocated for the 3 parameters
  * returns PAM_AUTH_ERR

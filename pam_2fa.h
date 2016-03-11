@@ -81,6 +81,10 @@ struct pam_2fa_privs {
 
 typedef int (*auth_func) (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
 
+typedef struct {
+    auth_func do_auth;
+} auth_mod;
+
 #define AUTHTOK_INCORRECT "\b\n\r\177INCORRECT"
 
 #define LOG_PREFIX "[pam_2fa] "
@@ -133,7 +137,7 @@ int ldap_search_factors(pam_handle_t *pamh, const module_config * cfg, const cha
 #endif
 
 #ifdef HAVE_CURL
-int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
+extern const auth_mod gauth_auth;
 #endif
 
 #ifdef HAVE_YKCLIENT
@@ -141,11 +145,11 @@ int yk_load_user_file(pam_handle_t *pamh, const module_config *cfg, struct passw
 int yk_get_publicid(pam_handle_t *pamh, char *buf, size_t *yk_id_pos, size_t *yk_id_len, char ***yk_publicids);
 void yk_free_publicids(char **publicids);
 
-int yk_auth_func    (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
+extern const auth_mod yk_auth;
 #endif
 
 void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg, struct passwd *user_entry, user_config *user_cfg);
 
-int sms_auth_func   (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
+extern const auth_mod sms_auth;
 
 #endif /* HEADER_PAM_2FA_H */

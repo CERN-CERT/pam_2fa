@@ -55,13 +55,13 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 	return PAM_AUTH_ERR;
     }
 
-    auth_func menu_functions[4] = { 0, 0, 0, 0 };
+    const auth_mod *available_mods[4] = { NULL, NULL, NULL, NULL };
     int menu_len = 0;
 
     if (cfg->gauth_enabled && user_cfg->gauth_login[0] != '\0') {
 #ifdef HAVE_CURL
 	++menu_len;
-	menu_functions[menu_len] = &gauth_auth_func;
+	available_mods[menu_len] = &gauth_auth;
         gauth_ok = 1;
 #else
 	DBG(("GAuth configured, but CURL not compiled (should never happen!)"));
@@ -69,13 +69,13 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     }
     if (cfg->sms_enabled && user_cfg->sms_mobile[0] != '\0') {
 	++menu_len;
-	menu_functions[menu_len] = &sms_auth_func;
+	available_mods[menu_len] = &sms_auth;
         sms_ok = 1;
     }
     if (cfg->yk_enabled && user_cfg->yk_publicids) {
 #ifdef HAVE_YKCLIENT
 	++menu_len;
-	menu_functions[menu_len] = &yk_auth_func;
+	available_mods[menu_len] = &yk_auth;
         yk_ok = 1;
 #else
 	DBG(("Yubikey configured, but ykclient not compiled (should never happen!)"));
@@ -84,7 +84,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 
     retval = PAM_AUTH_ERR;
     for (trial = 0; trial < cfg->retry && retval != PAM_SUCCESS; ++trial) {
-        auth_func selected_auth_func = NULL;
+        const auth_mod *selected_auth_mod = NULL;
         char *user_input = NULL;
         if (menu_len > 1) {
             size_t user_input_len;
@@ -108,16 +108,16 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
             user_input_len = user_input ? strlen(user_input) : 0;
 #ifdef HAVE_YKCLIENT
             if (yk_ok && user_input_len == YK_OTP_LEN) {
-                selected_auth_func = &yk_auth_func;
+                selected_auth_mod = &yk_auth;
             } else
 #endif
 #ifdef HAVE_CURL
             if(gauth_ok && user_input_len == GAUTH_OTP_LEN) {
-                selected_auth_func = &gauth_auth_func;
+                selected_auth_mod = &gauth_auth;
             } else
 #endif
             if(user_input_len == 1 && user_input[0] >= '1' && user_input[0] <= menu_len + '0') {
-                selected_auth_func = menu_functions[user_input[0] - '0'];
+                selected_auth_mod = available_mods[user_input[0] - '0'];
                 free(user_input);
                 user_input = NULL;
             } else {
@@ -126,16 +126,16 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
                 user_input = NULL;
             }
         } else if (menu_len == 1) {
-            selected_auth_func = menu_functions[1];
+            selected_auth_mod = available_mods[1];
         } else {
 	    pam_syslog(pamh, LOG_INFO, "No supported 2nd factor for user '%s'", user_cfg->username);
 	    pam_error(pamh, "No supported 2nd factors for user '%s'", user_cfg->username);
 	    retval = PAM_AUTH_ERR;
             break;
         }
-        if (selected_auth_func != NULL) {
+        if (selected_auth_mod != NULL) {
             // If not NULL, user_input has to be freed by the auth function
-            retval = selected_auth_func(pamh, user_cfg, cfg, user_input);
+            retval = selected_auth_mod->do_auth(pamh, user_cfg, cfg, user_input);
         }
     }
 

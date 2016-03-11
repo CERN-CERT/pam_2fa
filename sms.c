@@ -14,6 +14,12 @@ static char from[512] = { 0 };
 static int send_mail(char *dst, char *text, module_config *cfg);
 static int rnd_numb(char *otp, int length);
 
+int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
+
+const auth_mod sms_auth = {
+    .do_auth = &sms_auth_func
+};
+
 void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg,
                         struct passwd *user_entry, user_config *user_cfg)
 {
