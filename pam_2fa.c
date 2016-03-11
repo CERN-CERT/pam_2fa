@@ -127,8 +127,17 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
             break;
         }
         if (selected_auth_mod != NULL) {
-            // If not NULL, user_input has to be freed by the auth function
+            if (selected_auth_mod->preotp && user_input == NULL) {
+                // This module needs a user_input, fetch it
+                if (pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &user_input, selected_auth_mod->prompt) != PAM_SUCCESS) {
+                    pam_syslog(pamh, LOG_INFO, "Unable to get %s", selected_auth_mod->prompt);
+                    pam_error(pamh, "Unable to get user input");
+                    retval = PAM_AUTH_ERR;
+                    break;
+                }
+            }
             retval = selected_auth_mod->do_auth(pamh, user_cfg, cfg, user_input);
+            free(user_input);
         }
     }
 

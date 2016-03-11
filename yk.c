@@ -9,16 +9,17 @@
 
 #include "pam_2fa.h"
 
-int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
+int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp);
 
 const auth_mod yk_auth = {
     .do_auth = &yk_auth_func,
     .name = "Yubikey",
     .preotp = 1,
+    .prompt = "Yubikey: ",
     .otp_len = YK_OTP_LEN,
 };
 
-int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp) {
+int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp) {
     ykclient_t *ykc = NULL;
     int retval = 0;
 
@@ -49,56 +50,52 @@ int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cf
 
     // GET USER INPUT
     retval = PAM_AUTH_ERR;
-    if (otp == NULL)
-        pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &otp, "Yubikey: ");
+    if (otp == NULL) {
+        DBG(("Module error: 'preotp' called without an otp"));
+        ykclient_done(&ykc);
+        return PAM_AUTH_ERR;
+    }
 
-    if (otp) {
-        DBG(("Yubikey = %s", otp));
-        pam_syslog(pamh, LOG_DEBUG, "Yubikey OTP: %s (%zu)", otp, strlen(otp));
+    DBG(("Yubikey = %s", otp));
+    pam_syslog(pamh, LOG_DEBUG, "Yubikey OTP: %s (%zu)", otp, strlen(otp));
 
-        // VERIFY IF VALID INPUT !
-        if (strlen(otp) != YK_OTP_LEN) {
-            DBG(("INCORRRECT code from user!"));
-            pam_syslog(pamh, LOG_INFO, "Yubikey OTP is incorrect: %s", otp);
-            ykclient_done(&ykc);
-            free(otp);
-            return PAM_AUTH_ERR;
+    // VERIFY IF VALID INPUT !
+    if (strlen(otp) != YK_OTP_LEN) {
+        DBG(("INCORRRECT code from user!"));
+        pam_syslog(pamh, LOG_INFO, "Yubikey OTP is incorrect: %s", otp);
+        ykclient_done(&ykc);
+        return PAM_AUTH_ERR;
+    }
+
+    int keyNotFound = 1;
+    if (user_cfg->yk_publicids) {
+        char **publicid = NULL;
+        for(publicid = user_cfg->yk_publicids;
+                keyNotFound && *publicid;
+                ++publicid) {
+            keyNotFound = strncmp(otp, *publicid, YK_PUBLICID_LEN);
         }
+    }
 
-        int keyNotFound = 1;
-        if (user_cfg->yk_publicids) {
-            char **publicid = NULL;
-            for(publicid = user_cfg->yk_publicids;
-                    keyNotFound && *publicid;
-                    ++publicid) {
-                keyNotFound = strncmp(otp, *publicid, YK_PUBLICID_LEN);
-            }
-        }
+    if (keyNotFound) {
+        DBG(("INCORRECT yubikey public ID"));
+        pam_syslog(pamh, LOG_INFO, "Yubikey OTP doesn't match user public ids");
+        ykclient_done(&ykc);
+        return PAM_AUTH_ERR;
+    }
 
-        if (keyNotFound) {
-            DBG(("INCORRECT yubikey public ID"));
-            pam_syslog(pamh, LOG_INFO, "Yubikey OTP doesn't match user public ids");
-            ykclient_done(&ykc);
-            free(otp);
-            return PAM_AUTH_ERR;
-        }
+    ykclient_rc yk_server_retval = ykclient_request(ykc, otp);
+    DBG(("ykclient return value (%d): %s",
+         yk_server_retval, ykclient_strerror(yk_server_retval)));
 
-        ykclient_rc yk_server_retval = ykclient_request(ykc, otp);
-        DBG(("ykclient return value (%d): %s",
-             yk_server_retval, ykclient_strerror(yk_server_retval)));
-
-        if (yk_server_retval == YKCLIENT_OK) {
-            retval = PAM_SUCCESS;
-        } else {
-            pam_syslog(pamh, LOG_INFO, "Yubikey server response: %s (%d)", ykclient_strerror(yk_server_retval), yk_server_retval);
-            pam_prompt(pamh, PAM_ERROR_MSG, NULL, "%s", ykclient_strerror(yk_server_retval));
-        }
+    if (yk_server_retval == YKCLIENT_OK) {
+        retval = PAM_SUCCESS;
     } else {
-        pam_syslog(pamh, LOG_INFO, "No user input!");
+        pam_syslog(pamh, LOG_INFO, "Yubikey server response: %s (%d)", ykclient_strerror(yk_server_retval), yk_server_retval);
+        pam_prompt(pamh, PAM_ERROR_MSG, NULL, "%s", ykclient_strerror(yk_server_retval));
     }
 
     ykclient_done(&ykc);
-    free(otp);
     return retval;
 }
 

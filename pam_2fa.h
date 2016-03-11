@@ -79,13 +79,14 @@ struct pam_2fa_privs {
     int nbgrps;
 };
 
-typedef int (*auth_func) (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
+typedef int (*auth_func) (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp);
 
 typedef struct {
     auth_func do_auth;
     const char * name;
     _Bool preotp;
     size_t otp_len;
+    const char * prompt;
 } auth_mod;
 
 #define AUTHTOK_INCORRECT "\b\n\r\177INCORRECT"

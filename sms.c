@@ -14,7 +14,7 @@ static char from[512] = { 0 };
 static int send_mail(char *dst, char *text, module_config *cfg);
 static int rnd_numb(char *otp, int length);
 
-int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
+int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp);
 
 const auth_mod sms_auth = {
     .do_auth = &sms_auth_func,
@@ -85,7 +85,7 @@ void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg,
     user_cfg->sms_mobile[i] = 0;
 }
 
-int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp) {
+int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp) {
   int retval = 0;
     char *entered_code = NULL;
     char code[cfg->sms_otp_length + 1], dst[1024], txt[2048];
