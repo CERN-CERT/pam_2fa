@@ -18,7 +18,6 @@ void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg,
                         struct passwd *user_entry, user_config *user_cfg)
 {
     int fd, retval;
-    struct stat st;
     char filename[1024];
     char buf[SMS_MOBILE_LEN+2];
     char *buf_pos;
@@ -27,15 +26,19 @@ void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg,
 
     snprintf(filename, 1024, "%s/%s", user_entry->pw_dir, cfg->sms_user_file);
 
-    retval = stat(filename, &st);
-    if (retval < 0) {
-        pam_syslog(pamh, LOG_DEBUG, "Can't get stats of file '%s'", filename);
-        return;
-    }
+    {
+      // check the exitence of the file
+      struct stat st;
+      retval = stat(filename, &st);
+      if (retval < 0) {
+          pam_syslog(pamh, LOG_DEBUG, "Can't get stats of file '%s'", filename);
+          return;
+      }
 
-    if (!S_ISREG(st.st_mode)) {
-        pam_syslog(pamh, LOG_ERR, "Not a regular file '%s'", filename);
-        return;
+      if (!S_ISREG(st.st_mode)) {
+          pam_syslog(pamh, LOG_ERR, "Not a regular file '%s'", filename);
+          return;
+      }
     }
 
     fd = open(filename, O_RDONLY);
@@ -49,7 +52,7 @@ void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg,
 
     while ((bytes_read = read(fd, buf_pos, buf_rem)) > 0) {
         buf_pos += (size_t)bytes_read; // This is always > 0 by construct
-        buf_rem = (size_t)((ssize_t)bytes_read - bytes_read);
+        buf_rem = (size_t)((ssize_t)buf_rem - bytes_read);
         *buf_pos = 0;
         if (buf_rem == 0)
             break;
@@ -74,12 +77,13 @@ void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg,
 }
 
 int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp) {
-    int retval = 0, trial = 0;
+  int retval = 0;
+  unsigned int trial = 0;
     char *entered_code = NULL;
-    char code[cfg->otp_length + 1], dst[1024], txt[2048];
+    char code[cfg->sms_otp_length + 1], dst[1024], txt[2048];
 
     //GENERATE OTP/RANDOM CODE
-    rnd_numb(code, (int) cfg->otp_length);
+    rnd_numb(code, (int) cfg->sms_otp_length);
 
     if (user_cfg->sms_mobile[0]) {
         //SEND CODE WITH EMAIL/SMS 
@@ -110,7 +114,7 @@ int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * 
 	    DBG(("code entered = %s", entered_code));
 
 	    // VERIFY IF VALID INPUT !
-	    retval = strncmp(code, entered_code, cfg->otp_length + 1);
+	    retval = strncmp(code, entered_code, cfg->sms_otp_length + 1);
 	    free(entered_code);
             entered_code = NULL;
 
@@ -127,9 +131,8 @@ int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * 
 	}
     }
 
-    bzero(code, cfg->otp_length + 1);
-    retval = retval == OK ? PAM_SUCCESS : PAM_AUTH_ERR;
-    return retval;
+    memset(code, 0, cfg->sms_otp_length + 1);
+    return (retval == OK ? PAM_SUCCESS : PAM_AUTH_ERR);
 }
 
 static int send_mail(char *dst, char *text, module_config *cfg)

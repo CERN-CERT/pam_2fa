@@ -26,14 +26,11 @@ const char * get_ssh_user_auth(pam_handle_t * pamh, int debug)
 
 char * extract_details(pam_handle_t * pamh, int debug, const char * method)
 {
-	size_t method_len;
-	const char *ssh_user_auth;
-	char *my_ssh_user_auth, *tok, *saveptr, *details;
+	char *my_ssh_user_auth, *tok, *saveptr;
+	char *details = NULL;
+	size_t method_len = strlen(method);
 
-	details = NULL;
-	method_len = strlen(method);
-
-	ssh_user_auth = get_ssh_user_auth(pamh, debug);
+	const char *ssh_user_auth = get_ssh_user_auth(pamh, debug);
 	if (ssh_user_auth == NULL)
 		return NULL;
 
@@ -43,7 +40,7 @@ char * extract_details(pam_handle_t * pamh, int debug, const char * method)
 
 	tok = strtok_r(my_ssh_user_auth, ",", &saveptr);
 	while (tok != NULL) {
-		if (*tok == ' ')
+		while (*tok == ' ')
 			++tok;
 		if (strncmp(tok, method, method_len) == 0)
 			break;
@@ -54,12 +51,11 @@ char * extract_details(pam_handle_t * pamh, int debug, const char * method)
 		tok += method_len;
 		if (*tok != ':' || *(tok + 1) != ' ') {
 			D("empty details in SSH_USER_AUTH");
-			goto clean;
+		} else {
+			details = strdup(tok + 2);
 		}
-		details = strdup(tok + 2);
 	}
 
-clean:
 	free(my_ssh_user_auth);
 	return details;
 }

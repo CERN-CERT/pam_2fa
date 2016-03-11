@@ -18,7 +18,8 @@ user_config *get_user_config(pam_handle_t * pamh,
 
     if (pam_get_user(pamh, &user_cfg->username, NULL) != PAM_SUCCESS) {
         DBG(("Unable to retrieve username!"));
-        goto fail;
+        free(user_cfg);
+        return NULL;
     }
 
     DBG(("username = %s", user_cfg->username));
@@ -34,6 +35,11 @@ user_config *get_user_config(pam_handle_t * pamh,
                 user_cfg->username = kerberos_principal;
                 user_cfg->username_allocated = 1;
                 non_root = strcmp(user_cfg->username, ROOT_USER);
+            } else {
+              pam_syslog(pamh, LOG_ERR, "Kerberos principal does not have expected domain, ignoring : '%s'",
+                         kerberos_principal);
+              // cleanup char* returned by extract_details and that we do not use
+              free(kerberos_principal);
             }
         }
     }
@@ -43,7 +49,8 @@ user_config *get_user_config(pam_handle_t * pamh,
         //GET 2nd FACTORS FROM LDAP
         if (ldap_search_factors(pamh, cfg, user_cfg->username, user_cfg) < 0) {
             pam_syslog(pamh, LOG_ERR, "LDAP request failed for user '%s'", user_cfg->username);
-            goto fail;
+            free(user_cfg);
+            return NULL;
         }
 #else
 	DBG(("LDAP configured, but not compiled (should never happen!)"));
@@ -56,7 +63,8 @@ user_config *get_user_config(pam_handle_t * pamh,
         user_entry = pam_modutil_getpwnam(pamh, user_cfg->username);
         if(!user_entry) {
             pam_syslog(pamh, LOG_ERR, "Can't get passwd entry for '%s'", user_cfg->username);
-            goto fail;
+            free(user_cfg);
+            return NULL;
         }
 
 #ifdef HAVE_CURL
@@ -69,13 +77,10 @@ user_config *get_user_config(pam_handle_t * pamh,
         yk_load_user_file(pamh, cfg, user_entry, &user_cfg->yk_publicids);
 #endif
         sms_load_user_file(pamh, cfg, user_entry, user_cfg);
-        pam_2fa_regain_priv(pamh, &p);
+        pam_2fa_regain_priv(pamh, &p, user_entry);
     }
 
     return user_cfg;
-fail:
-    free(user_cfg);
-    return NULL;
 }
 
 void free_user_config(user_config * user_cfg)

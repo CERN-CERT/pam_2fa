@@ -28,9 +28,9 @@
 
 typedef struct {
     int debug;
-    int retry;
+    unsigned int retry;
     char *capath;
-    size_t otp_length;
+    size_t sms_otp_length;
     int ldap_enabled;
     char *ldap_uri;
     char *ldap_basedn;
@@ -89,10 +89,11 @@ typedef int (*auth_func) (pam_handle_t * pamh, user_config * user_cfg, module_co
 
 #define YK_DEFAULT_USER_FILE ".ssh/trusted_yubikeys"
 #define SMS_DEFAULT_USER_FILE ".ssh/trusted_sms"
-
-#define OTP_LENGTH 6
 #define MAX_RETRY 1
 
+#define SMS_OTP_LEN 6
+
+#define GAUTH_OTP_LEN 6
 #define GAUTH_DEFAULT_ACTION "CheckUser"
 
 #define YK_OTP_LEN 44
@@ -125,7 +126,7 @@ user_config *get_user_config(pam_handle_t * pamh, const module_config *cfg);
 void free_user_config(user_config * user_cfg);
 
 int pam_2fa_drop_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struct passwd *pw);
-int pam_2fa_regain_priv(pam_handle_t *pamh, struct pam_2fa_privs *p);
+int pam_2fa_regain_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struct passwd *pw);
 
 #ifdef HAVE_LDAP
 int ldap_search_factors(pam_handle_t *pamh, const module_config * cfg, const char *username, user_config *user_cfg);
