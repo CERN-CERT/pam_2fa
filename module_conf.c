@@ -18,12 +18,10 @@ static int parse_uint_option(pam_handle_t *pamh, const char* buf,
 
 /// convenient function for freeing a string ans reset the pointer to 0
 void
-free_and_reset_str(char** str) 
+free_and_reset_str(char** str)
 {
-    if (*str) {
-        free(*str);
-        *str = 0;
-    }
+    free(*str);
+    *str = NULL;
 }
 
 void
