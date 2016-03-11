@@ -28,7 +28,6 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     int retval;
     unsigned int trial;
     const char *authtok = NULL;
-    _Bool gauth_ok = 0, sms_ok = 0, yk_ok = 0;
 
     retval = pam_get_item(pamh, PAM_AUTHTOK, (const void **) &authtok);
     if (retval != PAM_SUCCESS || (authtok != NULL && !strcmp(authtok, AUTHTOK_INCORRECT))) {
@@ -62,7 +61,6 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 #ifdef HAVE_CURL
 	++menu_len;
 	available_mods[menu_len] = &gauth_auth;
-        gauth_ok = 1;
 #else
 	DBG(("GAuth configured, but CURL not compiled (should never happen!)"));
 #endif
@@ -70,13 +68,11 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     if (cfg->sms_enabled && user_cfg->sms_mobile[0] != '\0') {
 	++menu_len;
 	available_mods[menu_len] = &sms_auth;
-        sms_ok = 1;
     }
     if (cfg->yk_enabled && user_cfg->yk_publicids) {
 #ifdef HAVE_YKCLIENT
 	++menu_len;
 	available_mods[menu_len] = &yk_auth;
-        yk_ok = 1;
 #else
 	DBG(("Yubikey configured, but ykclient not compiled (should never happen!)"));
 #endif
