@@ -9,7 +9,6 @@ static void free_and_reset_str(char** str);
 static int strdup_or_die(char** dst, const char* src);
 static int raw_parse_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq, char** dst);
 static int parse_str_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq, char** dst);
-static int parse_int_option(pam_handle_t *pamh, const char* buf, const char* option, int* dst, int min);
 static int parse_sizet_option(pam_handle_t *pamh, const char* buf, const char* option, size_t* dst, size_t min);
 static int parse_uint_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq,
                              unsigned int* dst, unsigned int min);
@@ -104,7 +103,7 @@ int parse_str_option(pam_handle_t *pamh, const char* buf, const char* opt_name_w
 }
 
 /**
- * Handles the parsing of a given option with integer value.
+ * Handles the parsing of a given option with unsigned integer value.
  * @arg buf is the buffer to be parsed
  * @arg opt_name_with_eq is the option name we are looking for (including equal sign)
  * @arg dst is the destination for the value found if any.
@@ -113,8 +112,8 @@ int parse_str_option(pam_handle_t *pamh, const char* buf, const char* opt_name_w
  * returns 1 if the option was found in buffer and parsed properly
  * returns -1 in case of error
  */
-int parse_int_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq,
-                     int* dst, int min)
+int parse_uint_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq,
+                      unsigned int* dst, unsigned int min)
 {
   int value_pos = raw_parse_option(pamh, buf, opt_name_with_eq, 0);
     if (value_pos > 0) {
@@ -127,7 +126,7 @@ int parse_int_option(pam_handle_t *pamh, const char* buf, const char* opt_name_w
 
 /**
  * Handles the parsing of a given option with size_t value.
- * See parse_int_option for details of the arguments
+ * See parse_uint_option for details of the arguments
  */
 int parse_sizet_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq,
                        size_t* dst, size_t min)
@@ -135,22 +134,6 @@ int parse_sizet_option(pam_handle_t *pamh, const char* buf, const char* opt_name
   int value_pos = raw_parse_option(pamh, buf, opt_name_with_eq, 0);
     if (value_pos > 0) {
         sscanf(buf+value_pos, "%zu", dst);
-        if (min && *dst < min) *dst = min;
-        return 0;
-    }
-    return value_pos;
-}
-
-/**
- * Handles the parsing of a given option with unsigned int value.
- * See parse_int_option for details of the arguments
- */
-int parse_uint_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq,
-                      unsigned int* dst, unsigned int min)
-{
-  int value_pos = raw_parse_option(pamh, buf, opt_name_with_eq, 0);
-    if (value_pos > 0) {
-        sscanf(buf+value_pos, "%d", dst);
         if (min && *dst < min) *dst = min;
         return 0;
     }
@@ -173,8 +156,8 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
     for (i = 0; i < argc; ++i) {
         int retval = strcmp(argv[i], "debug");
         if (!retval) cfg->debug = 1;
-        retval = parse_int_option(pamh, argv[i], "max_retry=",
-                                  &cfg->retry, MAX_RETRY);
+        retval = parse_uint_option(pamh, argv[i], "max_retry=",
+                                   &cfg->retry, MAX_RETRY);
         if (retval <= 0) retval = parse_sizet_option(pamh, argv[i], "otp_length=",
                                                      &cfg->otp_length, OTP_LENGTH);
         if (retval <= 0) retval = parse_str_option(pamh, argv[i], "capath=", &cfg->capath);

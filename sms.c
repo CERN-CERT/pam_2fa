@@ -77,7 +77,8 @@ void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg,
 }
 
 int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp) {
-    int retval = 0, trial = 0;
+  int retval = 0;
+  unsigned int trial = 0;
     char *entered_code = NULL;
     char code[cfg->otp_length + 1], dst[1024], txt[2048];
 

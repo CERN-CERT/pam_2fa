@@ -54,7 +54,8 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
     char soap_action[1024], soap_result_tag[1024], soap_result_ok[1024];
     char http_request[HTTP_BUF_LEN] = { 0 }, curl_error[CURL_ERROR_SIZE] = { 0 };
     struct response_curl http_response = { .size = 0 };
-    int retval = 0, trial = 0, i = 0;
+    int retval = 0, i = 0;
+    unsigned int trial = 0;
     struct curl_slist *header_list = NULL;
 
     p = strrchr(cfg->gauth_ws_action, '/');

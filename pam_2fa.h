@@ -28,7 +28,7 @@
 
 typedef struct {
     int debug;
-    int retry;
+    unsigned int retry;
     char *capath;
     size_t otp_length;
     int ldap_enabled;

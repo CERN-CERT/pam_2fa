@@ -12,7 +12,8 @@
 
 int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp) {
     ykclient_t *ykc = NULL;
-    int retval = 0, trial = 0;
+    int retval = 0;
+    unsigned int trial = 0;
 
     retval = ykclient_init(&ykc);
     if (retval != YKCLIENT_OK) {
