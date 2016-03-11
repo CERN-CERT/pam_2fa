@@ -112,61 +112,59 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
     if (!user_cfg->gauth_login[0]) {
         strncpy(user_cfg->gauth_login, "INVALID&&USER&&NAME", GAUTH_LOGIN_LEN);
     }
-    //GET USER INPUT
-    retval = PAM_AUTH_ERR;
-    do {
-        DBG(("OTP = %s", otp));
 
-        // VERIFY IF VALID INPUT !
-        int isValid = 1;
-        unsigned int i = 0;
-        for (i = 0; isValid && otp[i]; ++i) {
-            if (!isdigit(otp[i])) {
-                isValid = 0;
-                break;
-            }
-        }
-        if (!isValid || otp[i]) {
-            DBG(("INCORRRECT code from user!"));
-            continue;
-        }
+    DBG(("OTP = %s", otp));
 
-        // build and perform HTTP Request
-        snprintf(http_request, HTTP_BUF_LEN, SOAP_REQUEST_TEMPL, user_cfg->gauth_login, otp);
-
-        int setopt_retval = curl_easy_setopt(curlh, CURLOPT_POSTFIELDS, http_request);
-        if (setopt_retval != CURLE_OK) {
-            DBG(("Unable to set CURL POST request"));
-            pam_syslog(pamh, LOG_ERR, "Unable to set CURL POST request: %s", curl_error);
+    // VERIFY IF VALID INPUT !
+    int isValid = 1;
+    unsigned int i = 0;
+    for (i = 0; isValid && otp[i]; ++i) {
+        if (!isdigit(otp[i])) {
+            isValid = 0;
             break;
         }
+    }
+    if (!isValid || otp[i]) {
+        DBG(("INCORRRECT code from user!"));
+        cleanup(curlh, header_list);
+        return PAM_AUTH_ERR;
+    }
 
-        int perform_retval = curl_easy_perform(curlh);
-        if (perform_retval) {
-            DBG(("curl return value (%d): %s", perform_retval, curl_error));
-            break;
-        }
+    // build and perform HTTP Request
+    snprintf(http_request, HTTP_BUF_LEN, SOAP_REQUEST_TEMPL, user_cfg->gauth_login, otp);
 
-        // PARSE THE RESPONSE
-        http_response.buffer[http_response.size] = 0;
-        http_response.size = 0;
-        result = strstr(http_response.buffer, soap_result_tag);
-        if (result == NULL) {
-            DBG(("Invalid SOAP response: %s", http_response.buffer));
-            pam_syslog(pamh, LOG_ERR, "Invalid SOAP response: %s", http_response.buffer);
-            break;
-        }
+    int setopt_retval = curl_easy_setopt(curlh, CURLOPT_POSTFIELDS, http_request);
+    if (setopt_retval != CURLE_OK) {
+        DBG(("Unable to set CURL POST request"));
+        pam_syslog(pamh, LOG_ERR, "Unable to set CURL POST request: %s", curl_error);
+        cleanup(curlh, header_list);
+        return PAM_AUTH_ERR;
+    }
 
-        if (!strncmp(result, soap_result_ok, strlen(soap_result_ok))) {
-            retval = PAM_SUCCESS;
-            break;
-        }
-    } while (0);
+    int perform_retval = curl_easy_perform(curlh);
+    if (perform_retval) {
+        DBG(("curl return value (%d): %s", perform_retval, curl_error));
+        cleanup(curlh, header_list);
+        return PAM_AUTH_ERR;
+    }
 
-    // cleanup
-    if (curlh) curl_easy_cleanup(curlh);
-    if (header_list) curl_slist_free_all(header_list);
+    // PARSE THE RESPONSE
+    http_response.buffer[http_response.size] = 0;
+    http_response.size = 0;
+    result = strstr(http_response.buffer, soap_result_tag);
+    if (result == NULL) {
+        DBG(("Invalid SOAP response: %s", http_response.buffer));
+        pam_syslog(pamh, LOG_ERR, "Invalid SOAP response: %s", http_response.buffer);
+        cleanup(curlh, header_list);
+        return PAM_AUTH_ERR;
+    }
 
+    if (!strncmp(result, soap_result_ok, strlen(soap_result_ok))) {
+        retval = PAM_SUCCESS;
+    } else {
+        retval = PAM_AUTH_ERR;
+    }
+    cleanup(curlh, header_list);
     return retval;
 }
 
