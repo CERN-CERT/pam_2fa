@@ -34,7 +34,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 
     retval = pam_get_item(pamh, PAM_AUTHTOK, (const void **) &authtok);
     if (retval != PAM_SUCCESS || (authtok != NULL && !strcmp(authtok, AUTHTOK_INCORRECT))) {
-        DBG(("Previous authentication failed, let's stop here!"));
+        D(("Previous authentication failed, let's stop here!"));
 	return PAM_AUTH_ERR;
     }
 
@@ -42,7 +42,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 
     //CHECK PAM CONFIGURATION
     if (retval == CONFIG_ERROR) {
-        DBG(("Invalid configuration"));
+        D(("Invalid configuration"));
 	pam_syslog(pamh, LOG_ERR, "Invalid parameters to pam_2fa module");
 	pam_error(pamh, "Sorry, 2FA Pam Module is misconfigured, please contact admins!\n");
         return PAM_AUTH_ERR;
