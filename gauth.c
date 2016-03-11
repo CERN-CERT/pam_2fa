@@ -23,7 +23,8 @@ static int check_curl_ret(int retval, char* curl_error, pam_handle_t * pamh, mod
 int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp);
 
 const auth_mod gauth_auth = {
-    .do_auth = &gauth_auth_func
+    .do_auth = &gauth_auth_func,
+    .name = "Google Authenticator",
 };
 
 /**

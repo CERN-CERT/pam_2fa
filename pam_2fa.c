@@ -91,12 +91,9 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
             int i = 1;
 
             pam_info(pamh, "Login for %s:\n", user_cfg->username);
-            if(gauth_ok)
-                pam_info(pamh, "        %d. Google Authenticator", i++);
-            if(sms_ok)
-                pam_info(pamh, "        %d. SMS OTP", i++);
-            if(yk_ok)
-                pam_info(pamh, "        %d. Yubikey", i);
+            for (i = 1; i <= menu_len; ++i) {
+                pam_info(pamh, "        %d. %s", i, available_mods[i]->name);
+            }
 
             if (pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &user_input, "\nOption (1-%d): ", menu_len) != PAM_SUCCESS) {
         	pam_syslog(pamh, LOG_INFO, "Unable to get 2nd factors for user '%s'", user_cfg->username);
