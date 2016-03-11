@@ -79,7 +79,7 @@ int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cf
 		continue;
 	    }
 
-	    int yk_server_retval = ykclient_request(ykc, otp);
+	    ykclient_rc yk_server_retval = ykclient_request(ykc, otp);
 	    DBG(("ykclient return value (%d): %s",
                  yk_server_retval, ykclient_strerror(yk_server_retval)));
 	    free(otp);
