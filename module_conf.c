@@ -100,7 +100,7 @@ int parse_str_option(pam_handle_t *pamh, const char* buf, const char* opt_name_w
         if (strdup_or_die(dst, buf+value_pos)) {
             return -1;
         }
-        return 0;
+        return 1;
     }
     return value_pos;
 }
@@ -120,7 +120,7 @@ int parse_uint_option(pam_handle_t *pamh, const char* buf,
   int value_pos = raw_parse_option(pamh, buf, opt_name_with_eq, 0);
     if (value_pos > 0) {
         sscanf(buf+value_pos, "%d", dst);
-        return 0;
+        return 1;
     }
     return value_pos;
 }
@@ -135,7 +135,7 @@ int parse_sizet_option(pam_handle_t *pamh, const char* buf,
   int value_pos = raw_parse_option(pamh, buf, opt_name_with_eq, 0);
     if (value_pos > 0) {
         sscanf(buf+value_pos, "%zu", dst);
-        return 0;
+        return 1;
     }
     return value_pos;
 }
