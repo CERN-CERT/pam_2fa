@@ -62,7 +62,7 @@ int strdup_or_die(char** dst, const char* src)
  * @arg opt_name_with_eq is the option name we are looking for (including equal sign)
  * Note that dst has to be freed by the caller in case of 0 return code
  * returns 0 if the option was not found
- * returns -1 if an error occured
+ * returns -1 if an error occured (duplicate option)
  * returns the position of the start of the value in the buffer otherwise
  */
 int raw_parse_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq, char** dst)
@@ -99,6 +99,9 @@ int parse_str_option(pam_handle_t *pamh, const char* buf, const char* opt_name_w
             return -1;
         }
         return 1;
+    } else if (value_pos == -1) {
+      // Don't crash on duplicate, ignore 2nd value
+      return 1;
     }
     return value_pos;
 }
@@ -119,6 +122,9 @@ int parse_uint_option(pam_handle_t *pamh, const char* buf,
     if (value_pos > 0) {
         sscanf(buf+value_pos, "%d", dst);
         return 1;
+    } else if (value_pos == -1) {
+      // Don't crash on duplicate, ignore 2nd value
+      return 1;
     }
     return value_pos;
 }
@@ -134,6 +140,9 @@ int parse_sizet_option(pam_handle_t *pamh, const char* buf,
     if (value_pos > 0) {
         sscanf(buf+value_pos, "%zu", dst);
         return 1;
+    } else if (value_pos == -1) {
+      // Don't crash on duplicate, ignore 2nd value
+      return 1;
     }
     return value_pos;
 }
