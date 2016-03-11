@@ -7,11 +7,14 @@
 // local function prototypes
 static void free_and_reset_str(char** str);
 static int strdup_or_die(char** dst, const char* src);
-static int raw_parse_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq, char** dst);
-static int parse_str_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq, char** dst);
-static int parse_sizet_option(pam_handle_t *pamh, const char* buf, const char* option, size_t* dst, size_t min);
-static int parse_uint_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq,
-                             unsigned int* dst, unsigned int min);
+static int raw_parse_option(pam_handle_t *pamh, const char* buf,
+                            const char* opt_name_with_eq, char** dst);
+static int parse_str_option(pam_handle_t *pamh, const char* buf,
+                            const char* opt_name_with_eq, char** dst);
+static int parse_sizet_option(pam_handle_t *pamh, const char* buf,
+                              const char* option, size_t* dst);
+static int parse_uint_option(pam_handle_t *pamh, const char* buf,
+                             const char* opt_name_with_eq, unsigned int* dst);
 
 /// convenient function for freeing a string ans reset the pointer to 0
 void
@@ -107,18 +110,16 @@ int parse_str_option(pam_handle_t *pamh, const char* buf, const char* opt_name_w
  * @arg buf is the buffer to be parsed
  * @arg opt_name_with_eq is the option name we are looking for (including equal sign)
  * @arg dst is the destination for the value found if any.
- * @arg min is the minimum value expected (if not 0). If less is given, we will use this number
  * returns 0 if the option was not found in the buffer
  * returns 1 if the option was found in buffer and parsed properly
  * returns -1 in case of error
  */
-int parse_uint_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq,
-                      unsigned int* dst, unsigned int min)
+int parse_uint_option(pam_handle_t *pamh, const char* buf,
+                      const char* opt_name_with_eq, unsigned int* dst)
 {
   int value_pos = raw_parse_option(pamh, buf, opt_name_with_eq, 0);
     if (value_pos > 0) {
         sscanf(buf+value_pos, "%d", dst);
-        if (min && *dst < min) *dst = min;
         return 0;
     }
     return value_pos;
@@ -128,13 +129,12 @@ int parse_uint_option(pam_handle_t *pamh, const char* buf, const char* opt_name_
  * Handles the parsing of a given option with size_t value.
  * See parse_uint_option for details of the arguments
  */
-int parse_sizet_option(pam_handle_t *pamh, const char* buf, const char* opt_name_with_eq,
-                       size_t* dst, size_t min)
+int parse_sizet_option(pam_handle_t *pamh, const char* buf,
+                       const char* opt_name_with_eq, size_t* dst)
 {
   int value_pos = raw_parse_option(pamh, buf, opt_name_with_eq, 0);
     if (value_pos > 0) {
         sscanf(buf+value_pos, "%zu", dst);
-        if (min && *dst < min) *dst = min;
         return 0;
     }
     return value_pos;
@@ -156,10 +156,8 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
     for (i = 0; i < argc; ++i) {
         int retval = strcmp(argv[i], "debug");
         if (!retval) cfg->debug = 1;
-        retval = parse_uint_option(pamh, argv[i], "max_retry=",
-                                   &cfg->retry, MAX_RETRY);
-        if (retval <= 0) retval = parse_sizet_option(pamh, argv[i], "otp_length=",
-                                                     &cfg->otp_length, OTP_LENGTH);
+        retval = parse_uint_option(pamh, argv[i], "max_retry=", &cfg->retry);
+        if (retval <= 0) retval = parse_sizet_option(pamh, argv[i], "otp_length=", &cfg->otp_length);
         if (retval <= 0) retval = parse_str_option(pamh, argv[i], "capath=", &cfg->capath);
 #ifdef HAVE_LDAP
         if (retval <= 0) retval = parse_str_option(pamh, argv[i], "ldap_uri=", &cfg->ldap_uri);
@@ -179,7 +177,7 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
 #ifdef HAVE_YKCLIENT
         if (retval <= 0) retval = parse_str_option(pamh, argv[i], "yk_prefix=", &cfg->yk_prefix);
         if (retval <= 0) retval = parse_str_option(pamh, argv[i], "yk_uri=", &cfg->yk_uri);
-        if (retval <= 0) retval = parse_uint_option(pamh, argv[i], "yk_id=", &cfg->yk_id, 0);
+        if (retval <= 0) retval = parse_uint_option(pamh, argv[i], "yk_id=", &cfg->yk_id);
         if (retval <= 0) retval = parse_str_option(pamh, argv[i], "yk_key=", &cfg->yk_key);
         if (retval <= 0) retval = parse_str_option(pamh, argv[i], "yk_user_file=", &cfg->yk_user_file);
 #endif
