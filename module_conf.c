@@ -154,9 +154,9 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
     }
 
     for (i = 0; i < argc; ++i) {
-        int retval = strcmp(argv[i], "debug");
-        if (!retval) cfg->debug = 1;
-        retval = parse_uint_option(pamh, argv[i], "max_retry=", &cfg->retry);
+        int retval = !strcmp(argv[i], "debug");
+        if (retval) cfg->debug = 1;
+        if (retval <= 0) retval = parse_uint_option(pamh, argv[i], "max_retry=", &cfg->retry);
         if (retval <= 0) retval = parse_sizet_option(pamh, argv[i], "sms_otp_length=", &cfg->sms_otp_length);
         if (retval <= 0) retval = parse_str_option(pamh, argv[i], "capath=", &cfg->capath);
 #ifdef HAVE_LDAP
