@@ -91,8 +91,8 @@ int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cf
 		break;
 
 	    default:
-	        pam_syslog(pamh, LOG_INFO, "Yubikey server response: %s (%d)", ykclient_strerror(retval), retval);
-	        pam_prompt(pamh, PAM_ERROR_MSG, NULL, "%s", ykclient_strerror(retval));
+	        pam_syslog(pamh, LOG_INFO, "Yubikey server response: %s (%d)", ykclient_strerror(yk_server_retval), yk_server_retval);
+	        pam_prompt(pamh, PAM_ERROR_MSG, NULL, "%s", ykclient_strerror(yk_server_retval));
 		retval = PAM_AUTH_ERR;
 		break;
 	    }
