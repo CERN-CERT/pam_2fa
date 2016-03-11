@@ -79,12 +79,13 @@ struct pam_2fa_privs {
     int nbgrps;
 };
 
-typedef int (*auth_func) (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp);
+typedef void* (*pre_auth_func) (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg);
+typedef int (*auth_func) (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp, void* pre_auth_data);
 
 typedef struct {
+    pre_auth_func pre_auth;
     auth_func do_auth;
     const char * name;
-    _Bool preotp;
     size_t otp_len;
     const char * prompt;
 } auth_mod;
@@ -123,7 +124,6 @@ typedef struct {
 #define SEARCH_SUCCESS 6655
 
 #define SMS_TEXT_WAIT "Please be patient, you will receive shortly a SMS with your authentication code."
-#define SMS_TEXT_INSERT_INPUT "Please put this code here: "
 #define SMS_SUBJECT ""
 #define SMS_TEXT "Your authentication code is: "
 

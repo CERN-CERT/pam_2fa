@@ -9,19 +9,24 @@
 
 #include "pam_2fa.h"
 
-int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp);
+int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp, void * data);
 
 const auth_mod yk_auth = {
+    .pre_auth = NULL,
     .do_auth = &yk_auth_func,
     .name = "Yubikey",
-    .preotp = 1,
     .prompt = "Yubikey: ",
     .otp_len = YK_OTP_LEN,
 };
 
-int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp) {
+int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp, void * data) {
     ykclient_t *ykc = NULL;
     int retval = 0;
+
+    if (otp == NULL) {
+        DBG(("Module error: auth  called without an otp"));
+        return PAM_AUTH_ERR;
+    }
 
     retval = ykclient_init(&ykc);
     if (retval != YKCLIENT_OK) {
@@ -48,13 +53,7 @@ int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cf
     if (cfg->yk_uri)
 	ykclient_set_url_template(ykc, cfg->yk_uri);
 
-    // GET USER INPUT
     retval = PAM_AUTH_ERR;
-    if (otp == NULL) {
-        DBG(("Module error: 'preotp' called without an otp"));
-        ykclient_done(&ykc);
-        return PAM_AUTH_ERR;
-    }
 
     DBG(("Yubikey = %s", otp));
     pam_syslog(pamh, LOG_DEBUG, "Yubikey OTP: %s (%zu)", otp, strlen(otp));

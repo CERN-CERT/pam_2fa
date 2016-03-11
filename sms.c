@@ -14,12 +14,14 @@ static char from[512] = { 0 };
 static int send_mail(char *dst, char *text, module_config *cfg);
 static int rnd_numb(char *otp, int length);
 
-int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp);
+void* sms_pre_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg);
+int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp, void* data);
 
 const auth_mod sms_auth = {
+    .pre_auth = &sms_pre_auth_func,
     .do_auth = &sms_auth_func,
     .name = "SMS OTP",
-    .preotp = 0,
+    .prompt = "Please put this code here: ",
     .otp_len = 0,
 };
 
@@ -85,10 +87,16 @@ void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg,
     user_cfg->sms_mobile[i] = 0;
 }
 
-int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp) {
-  int retval = 0;
-    char *entered_code = NULL;
-    char code[cfg->sms_otp_length + 1], dst[1024], txt[2048];
+void* sms_pre_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg) {
+    int retval;
+    char * code;
+    char dst[1024], txt[2048];
+
+    code = malloc(cfg->sms_otp_length + 1);
+    if (code == NULL) {
+        pam_syslog(pamh, LOG_CRIT, "Out of memory");
+        return NULL;
+    }
 
     //GENERATE OTP/RANDOM CODE
     rnd_numb(code, (int) cfg->sms_otp_length);
@@ -107,38 +115,40 @@ int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * 
             pam_syslog(pamh, LOG_ERR, "%s Failed to send authentication code by SMS!",
                        LOG_PREFIX);
             pam_prompt(pamh, PAM_ERROR_MSG, NULL, "Failed to send authentication code by SMS!\n");
-            return (ERROR);
+            free(code);
+            return NULL;
         }
     }
 
     pam_prompt(pamh, PAM_TEXT_INFO, NULL, SMS_TEXT_WAIT);
 
-    //GET USER INPUT
-    retval = ERROR;
-    pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &entered_code,SMS_TEXT_INSERT_INPUT);
+    return code;
+}
 
-    if (entered_code) {
-        DBG(("code entered = %s", entered_code));
+int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp, void *data) {
+    char * code;
+    int retval;
 
-        // VERIFY IF VALID INPUT !
-        retval = strncmp(code, entered_code, cfg->sms_otp_length + 1);
-        free(entered_code);
-        entered_code = NULL;
+    code = (char*) data;
 
-        if (retval == 0) {
-            DBG(("Correct code from user"));
-            retval = OK;
-        } else {
-            DBG(("INCORRRECT code from user!"));
-            retval = ERROR;
-        }
-    } else {
-        pam_syslog(pamh, LOG_ERR, "No user input!");
-        retval = ERROR;
+    if (otp == NULL) {
+        DBG(("Module error: auth  called without an otp"));
+        free(code);
+        return PAM_AUTH_ERR;
     }
+    DBG(("code entered = %s", otp));
 
-    memset(code, 0, cfg->sms_otp_length + 1);
-    return (retval == OK ? PAM_SUCCESS : PAM_AUTH_ERR);
+    // VERIFY IF VALID INPUT !
+    retval = strncmp(code, otp, cfg->sms_otp_length + 1);
+    free(code);
+
+    if (retval == 0 && strlen(otp) == cfg->sms_otp_length) {
+        DBG(("Correct code from user"));
+        return PAM_SUCCESS;
+    } else {
+        DBG(("INCORRRECT code from user!"));
+        return PAM_AUTH_ERR;
+    }
 }
 
 static int send_mail(char *dst, char *text, module_config *cfg)

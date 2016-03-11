@@ -20,12 +20,12 @@ static size_t writefunc_curl (char *ptr, size_t size, size_t nmemb, void *userda
 static int cleanup (CURL *curlh, struct curl_slist *header_list);
 static int check_curl_ret(int retval, char* curl_error, pam_handle_t * pamh, module_config * cfg);
 
-int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp);
+int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp, void * data);
 
 const auth_mod gauth_auth = {
+    .pre_auth = NULL,
     .do_auth = &gauth_auth_func,
     .name = "Google Authenticator",
-    .preotp = 1,
     .prompt = "OTP: ",
     .otp_len = GAUTH_OTP_LEN,
 };
@@ -56,7 +56,7 @@ int check_curl_ret(int retval, char* curl_error, pam_handle_t * pamh, module_con
     return 0;
 }
 
-int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp)
+int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp, void * data)
 {
     CURL *curlh = NULL;
     char *p = NULL, *result = NULL;
@@ -67,7 +67,7 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
     struct curl_slist *header_list = NULL;
 
     if (otp == NULL) {
-        DBG(("Module error: 'preotp' called without an otp"));
+        DBG(("Module error: auth  called without an otp"));
         return PAM_AUTH_ERR;
     }
 
