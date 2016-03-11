@@ -156,32 +156,32 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
     for (i = 0; i < argc; ++i) {
         int retval = !strcmp(argv[i], "debug");
         if (retval) cfg->debug = 1;
-        if (retval <= 0) retval = parse_uint_option(pamh, argv[i], "max_retry=", &cfg->retry);
-        if (retval <= 0) retval = parse_sizet_option(pamh, argv[i], "sms_otp_length=", &cfg->sms_otp_length);
-        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "capath=", &cfg->capath);
+        if (retval == 0) retval = parse_uint_option(pamh, argv[i], "max_retry=", &cfg->retry);
+        if (retval == 0) retval = parse_sizet_option(pamh, argv[i], "sms_otp_length=", &cfg->sms_otp_length);
+        if (retval == 0) retval = parse_str_option(pamh, argv[i], "capath=", &cfg->capath);
 #ifdef HAVE_LDAP
-        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "ldap_uri=", &cfg->ldap_uri);
-        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "ldap_attr=", &cfg->ldap_attr);
-        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "ldap_basedn=", &cfg->ldap_basedn);
+        if (retval == 0) retval = parse_str_option(pamh, argv[i], "ldap_uri=", &cfg->ldap_uri);
+        if (retval == 0) retval = parse_str_option(pamh, argv[i], "ldap_attr=", &cfg->ldap_attr);
+        if (retval == 0) retval = parse_str_option(pamh, argv[i], "ldap_basedn=", &cfg->ldap_basedn);
 #endif
 #ifdef HAVE_CURL
-        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "gauth_prefix=", &cfg->gauth_prefix);
-        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "gauth_ws_uri=", &cfg->gauth_ws_uri);
-        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "gauth_ws_action=", &cfg->gauth_ws_action);
+        if (retval == 0) retval = parse_str_option(pamh, argv[i], "gauth_prefix=", &cfg->gauth_prefix);
+        if (retval == 0) retval = parse_str_option(pamh, argv[i], "gauth_ws_uri=", &cfg->gauth_ws_uri);
+        if (retval == 0) retval = parse_str_option(pamh, argv[i], "gauth_ws_action=", &cfg->gauth_ws_action);
 #endif
-        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "sms_prefix=", &cfg->sms_prefix);
-        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "sms_gateway=", &cfg->sms_gateway);
-        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "sms_subject=", &cfg->sms_subject);
-        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "sms_text=", &cfg->sms_text);
-        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "sms_user_file=", &cfg->sms_user_file);
+        if (retval == 0) retval = parse_str_option(pamh, argv[i], "sms_prefix=", &cfg->sms_prefix);
+        if (retval == 0) retval = parse_str_option(pamh, argv[i], "sms_gateway=", &cfg->sms_gateway);
+        if (retval == 0) retval = parse_str_option(pamh, argv[i], "sms_subject=", &cfg->sms_subject);
+        if (retval == 0) retval = parse_str_option(pamh, argv[i], "sms_text=", &cfg->sms_text);
+        if (retval == 0) retval = parse_str_option(pamh, argv[i], "sms_user_file=", &cfg->sms_user_file);
 #ifdef HAVE_YKCLIENT
-        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "yk_prefix=", &cfg->yk_prefix);
-        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "yk_uri=", &cfg->yk_uri);
-        if (retval <= 0) retval = parse_uint_option(pamh, argv[i], "yk_id=", &cfg->yk_id);
-        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "yk_key=", &cfg->yk_key);
-        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "yk_user_file=", &cfg->yk_user_file);
+        if (retval == 0) retval = parse_str_option(pamh, argv[i], "yk_prefix=", &cfg->yk_prefix);
+        if (retval == 0) retval = parse_str_option(pamh, argv[i], "yk_uri=", &cfg->yk_uri);
+        if (retval == 0) retval = parse_uint_option(pamh, argv[i], "yk_id=", &cfg->yk_id);
+        if (retval == 0) retval = parse_str_option(pamh, argv[i], "yk_key=", &cfg->yk_key);
+        if (retval == 0) retval = parse_str_option(pamh, argv[i], "yk_user_file=", &cfg->yk_user_file);
 #endif
-        if (retval <= 0) retval = parse_str_option(pamh, argv[i], "domain=", &cfg->domain);
+        if (retval == 0) retval = parse_str_option(pamh, argv[i], "domain=", &cfg->domain);
 
         if (0 == retval) {
             pam_syslog(pamh, LOG_ERR, "Invalid option: %s", argv[i]);
