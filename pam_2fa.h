@@ -30,7 +30,7 @@ typedef struct {
     int debug;
     unsigned int retry;
     char *capath;
-    size_t otp_length;
+    size_t sms_otp_length;
     int ldap_enabled;
     char *ldap_uri;
     char *ldap_basedn;
@@ -89,10 +89,11 @@ typedef int (*auth_func) (pam_handle_t * pamh, user_config * user_cfg, module_co
 
 #define YK_DEFAULT_USER_FILE ".ssh/trusted_yubikeys"
 #define SMS_DEFAULT_USER_FILE ".ssh/trusted_sms"
-
-#define OTP_LENGTH 6
 #define MAX_RETRY 1
 
+#define SMS_OTP_LEN 6
+
+#define GAUTH_OTP_LEN 6
 #define GAUTH_DEFAULT_ACTION "CheckUser"
 
 #define YK_OTP_LEN 44

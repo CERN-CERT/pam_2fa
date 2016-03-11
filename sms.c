@@ -80,10 +80,10 @@ int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * 
   int retval = 0;
   unsigned int trial = 0;
     char *entered_code = NULL;
-    char code[cfg->otp_length + 1], dst[1024], txt[2048];
+    char code[cfg->sms_otp_length + 1], dst[1024], txt[2048];
 
     //GENERATE OTP/RANDOM CODE
-    rnd_numb(code, (int) cfg->otp_length);
+    rnd_numb(code, (int) cfg->sms_otp_length);
 
     if (user_cfg->sms_mobile[0]) {
         //SEND CODE WITH EMAIL/SMS 
@@ -114,7 +114,7 @@ int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * 
 	    DBG(("code entered = %s", entered_code));
 
 	    // VERIFY IF VALID INPUT !
-	    retval = strncmp(code, entered_code, cfg->otp_length + 1);
+	    retval = strncmp(code, entered_code, cfg->sms_otp_length + 1);
 	    free(entered_code);
             entered_code = NULL;
 
@@ -131,7 +131,7 @@ int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * 
 	}
     }
 
-    memset(code, 0, cfg->otp_length + 1);
+    memset(code, 0, cfg->sms_otp_length + 1);
     return (retval == OK ? PAM_SUCCESS : PAM_AUTH_ERR);
 }
 

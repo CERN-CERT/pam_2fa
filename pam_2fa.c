@@ -116,7 +116,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
             } else
 #endif
 #ifdef HAVE_CURL
-            if(gauth_ok && resp_len == cfg->otp_length) {
+            if(gauth_ok && resp_len == GAUTH_OTP_LEN) {
                 selected_auth_func = &gauth_auth_func;
                 otp = resp;
             } else

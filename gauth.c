@@ -54,7 +54,7 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
     char soap_action[1024], soap_result_tag[1024], soap_result_ok[1024];
     char http_request[HTTP_BUF_LEN] = { 0 }, curl_error[CURL_ERROR_SIZE] = { 0 };
     struct response_curl http_response = { .size = 0 };
-    int retval = 0, i = 0;
+    int retval = 0;
     unsigned int trial = 0;
     struct curl_slist *header_list = NULL;
 
@@ -111,7 +111,8 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
 
             // VERIFY IF VALID INPUT !
             int isValid = 1;
-            for (i = 0; isValid && i < (int) cfg->otp_length; ++i) {
+            unsigned int i = 0;
+            for (i = 0; isValid && otp[i]; ++i) {
                 if (!isdigit(otp[i])) {
                     isValid = 0;
                     break;
@@ -126,7 +127,7 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
 
             // build and perform HTTP Request
             snprintf(http_request, HTTP_BUF_LEN, SOAP_REQUEST_TEMPL, user_cfg->gauth_login, otp);
-            memset(otp, 0, cfg->otp_length);
+            memset(otp, 0, i);
             free(otp);
             otp = NULL;
 

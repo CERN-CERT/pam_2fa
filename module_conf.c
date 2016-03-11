@@ -157,7 +157,7 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
         int retval = strcmp(argv[i], "debug");
         if (!retval) cfg->debug = 1;
         retval = parse_uint_option(pamh, argv[i], "max_retry=", &cfg->retry);
-        if (retval <= 0) retval = parse_sizet_option(pamh, argv[i], "otp_length=", &cfg->otp_length);
+        if (retval <= 0) retval = parse_sizet_option(pamh, argv[i], "sms_otp_length=", &cfg->sms_otp_length);
         if (retval <= 0) retval = parse_str_option(pamh, argv[i], "capath=", &cfg->capath);
 #ifdef HAVE_LDAP
         if (retval <= 0) retval = parse_str_option(pamh, argv[i], "ldap_uri=", &cfg->ldap_uri);
@@ -195,8 +195,8 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
     //DEFAULT VALUES
     if (!cfg->retry &&  !mem_error)
         cfg->retry = MAX_RETRY;
-    if (!cfg->otp_length &&  !mem_error)
-        cfg->otp_length = OTP_LENGTH;
+    if (!cfg->sms_otp_length &&  !mem_error)
+        cfg->sms_otp_length = SMS_OTP_LEN;
     if (!cfg->sms_subject &&  !mem_error)
         mem_error = strdup_or_die(&cfg->sms_subject, SMS_SUBJECT);
     if (!cfg->sms_text &&  !mem_error)
@@ -245,7 +245,7 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
 
     DBG(("debug => %d",           cfg->debug));
     DBG(("retry => %d",           cfg->retry));
-    DBG(("otp_length => %d",      cfg->otp_length));
+    DBG(("sms_otp_length => %d",      cfg->sms_otp_length));
     DBG(("capath => %d",          cfg->capath));
 #ifdef HAVE_LDAP
     DBG(("ldap_enabled = %s",     cfg->ldap_enabled));
