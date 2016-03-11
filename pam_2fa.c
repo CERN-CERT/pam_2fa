@@ -26,10 +26,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     module_config *cfg = NULL;
     user_config *user_cfg = NULL;
     int retval;
-    size_t resp_len = 0;
-    char *resp = NULL, *otp = NULL;
+    unsigned int trial;
     const char *authtok = NULL;
-    auth_func selected_auth_func = NULL;
     _Bool gauth_ok = 0, sms_ok = 0, yk_ok = 0;
 
     retval = pam_get_item(pamh, PAM_AUTHTOK, (const void **) &authtok);
@@ -84,66 +82,61 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 #endif
     }
 
-    if (menu_len > 1) {
-        //SHOW THE SELECTION MENU
-        int i = 1;
+    retval = PAM_AUTH_ERR;
+    for (trial = 0; trial < cfg->retry && retval != PAM_SUCCESS; ++trial) {
+        auth_func selected_auth_func = NULL;
+        char *user_input = NULL;
+        if (menu_len > 1) {
+            size_t user_input_len;
+            int i = 1;
 
-        pam_info(pamh, "Login for %s:\n", user_cfg->username);
+            pam_info(pamh, "Login for %s:\n", user_cfg->username);
+            if(gauth_ok)
+                pam_info(pamh, "        %d. Google Authenticator", i++);
+            if(sms_ok)
+                pam_info(pamh, "        %d. SMS OTP", i++);
+            if(yk_ok)
+                pam_info(pamh, "        %d. Yubikey", i);
 
-        if(gauth_ok)
-	    pam_info(pamh, "        %d. Google Authenticator", i++);
-        if(sms_ok)
-	    pam_info(pamh, "        %d. SMS OTP", i++);
-        if(yk_ok)
-	    pam_info(pamh, "        %d. Yubikey", i);
-    
-        retval = OK;
-        while (!selected_auth_func) {
-            retval = pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &resp, "\nOption (1-%d): ", menu_len);
-
-            if (retval != PAM_SUCCESS) {
+            if (pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &user_input, "\nOption (1-%d): ", menu_len) != PAM_SUCCESS) {
         	pam_syslog(pamh, LOG_INFO, "Unable to get 2nd factors for user '%s'", user_cfg->username);
         	pam_error(pamh, "Unable to get user input");
         	retval = PAM_AUTH_ERR;
 		break;
             }
-    
-            resp_len = resp ? strlen(resp) : 0;
+
+            user_input_len = user_input ? strlen(user_input) : 0;
 #ifdef HAVE_YKCLIENT
-            if(yk_ok && resp_len == YK_OTP_LEN) {
+            if (yk_ok && user_input_len == YK_OTP_LEN) {
                 selected_auth_func = &yk_auth_func;
-                otp = resp;
             } else
 #endif
 #ifdef HAVE_CURL
-            if(gauth_ok && resp_len == GAUTH_OTP_LEN) {
+            if(gauth_ok && user_input_len == GAUTH_OTP_LEN) {
                 selected_auth_func = &gauth_auth_func;
-                otp = resp;
             } else
 #endif
-            if(resp_len == 1 && resp[0] >= '1' && resp[0] <= menu_len + '0') {
-                selected_auth_func = menu_functions[resp[0] - '0'];
+            if(user_input_len == 1 && user_input[0] >= '1' && user_input[0] <= menu_len + '0') {
+                selected_auth_func = menu_functions[user_input[0] - '0'];
+                free(user_input);
+                user_input = NULL;
             } else {
-                pam_error(pamh, "Wrong value");
+                pam_error(pamh, "Invalid input");
+                free(user_input);
+                user_input = NULL;
             }
-    
-            if (resp != NULL) {
-                if(!otp) free(resp);
-                resp = NULL;
-            }
+        } else if (menu_len == 1) {
+            selected_auth_func = menu_functions[1];
+        } else {
+	    pam_syslog(pamh, LOG_INFO, "No supported 2nd factor for user '%s'", user_cfg->username);
+	    pam_error(pamh, "No supported 2nd factors for user '%s'", user_cfg->username);
+	    retval = PAM_AUTH_ERR;
+            break;
         }
-    } else if (menu_len == 1) {
-         selected_auth_func = menu_functions[1];
-         retval = OK;
-    } else {
-	pam_syslog(pamh, LOG_INFO, "No supported 2nd factor for user '%s'", user_cfg->username);
-	pam_error(pamh, "No supported 2nd factors for user '%s'", user_cfg->username);
-	retval = PAM_AUTH_ERR;
-    }
-
-    if (retval == OK) {
-        // CALL THE CORRESPONDING AUTHENTICATION METHOD
-        retval = selected_auth_func(pamh, user_cfg, cfg, otp);
+        if (selected_auth_func != NULL) {
+            // If not NULL, user_input has to be freed by the auth function
+            retval = selected_auth_func(pamh, user_cfg, cfg, user_input);
+        }
     }
 
     // final cleanup

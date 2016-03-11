@@ -78,7 +78,6 @@ void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg,
 
 int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp) {
   int retval = 0;
-  unsigned int trial = 0;
     char *entered_code = NULL;
     char code[cfg->sms_otp_length + 1], dst[1024], txt[2048];
 
@@ -107,28 +106,26 @@ int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * 
 
     //GET USER INPUT
     retval = ERROR;
-    for (trial = 0; retval != OK && trial < cfg->retry; ++trial) {
-	pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &entered_code,SMS_TEXT_INSERT_INPUT);
+    pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &entered_code,SMS_TEXT_INSERT_INPUT);
 
-	if (entered_code) {
-	    DBG(("code entered = %s", entered_code));
+    if (entered_code) {
+        DBG(("code entered = %s", entered_code));
 
-	    // VERIFY IF VALID INPUT !
-	    retval = strncmp(code, entered_code, cfg->sms_otp_length + 1);
-	    free(entered_code);
-            entered_code = NULL;
+        // VERIFY IF VALID INPUT !
+        retval = strncmp(code, entered_code, cfg->sms_otp_length + 1);
+        free(entered_code);
+        entered_code = NULL;
 
-	    if (retval == 0) {
-		DBG(("Correct code from user"));
-		retval = OK;
-	    } else {
-		DBG(("INCORRRECT code from user!"));
-		retval = ERROR;
-	    }
-	} else {
-	    pam_syslog(pamh, LOG_ERR, "No user input!");
-	    retval = ERROR;
-	}
+        if (retval == 0) {
+            DBG(("Correct code from user"));
+            retval = OK;
+        } else {
+            DBG(("INCORRRECT code from user!"));
+            retval = ERROR;
+        }
+    } else {
+        pam_syslog(pamh, LOG_ERR, "No user input!");
+        retval = ERROR;
     }
 
     memset(code, 0, cfg->sms_otp_length + 1);

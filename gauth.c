@@ -55,7 +55,6 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
     char http_request[HTTP_BUF_LEN] = { 0 }, curl_error[CURL_ERROR_SIZE] = { 0 };
     struct response_curl http_response = { .size = 0 };
     int retval = 0;
-    unsigned int trial = 0;
     struct curl_slist *header_list = NULL;
 
     p = strrchr(cfg->gauth_ws_action, '/');
@@ -102,7 +101,7 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
 
     //GET USER INPUT
     retval = PAM_AUTH_ERR;
-    for (trial = 0; trial < cfg->retry; ++trial) {
+    do {
         if(!otp)
             pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &otp, "OTP: ");
 
@@ -161,7 +160,7 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
         } else {
             pam_syslog(pamh, LOG_INFO, "No user input!");
         }
-    }
+    } while (0);
 
     // cleanup
     if (otp) free(otp);
