@@ -25,6 +25,8 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
 const auth_mod gauth_auth = {
     .do_auth = &gauth_auth_func,
     .name = "Google Authenticator",
+    .preotp = 1,
+    .otp_len = GAUTH_OTP_LEN,
 };
 
 /**

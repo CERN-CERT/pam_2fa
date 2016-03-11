@@ -103,24 +103,24 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
             }
 
             user_input_len = user_input ? strlen(user_input) : 0;
-#ifdef HAVE_YKCLIENT
-            if (yk_ok && user_input_len == YK_OTP_LEN) {
-                selected_auth_mod = &yk_auth;
-            } else
-#endif
-#ifdef HAVE_CURL
-            if(gauth_ok && user_input_len == GAUTH_OTP_LEN) {
-                selected_auth_mod = &gauth_auth;
-            } else
-#endif
-            if(user_input_len == 1 && user_input[0] >= '1' && user_input[0] <= menu_len + '0') {
-                selected_auth_mod = available_mods[user_input[0] - '0'];
-                free(user_input);
-                user_input = NULL;
-            } else {
-                pam_error(pamh, "Invalid input");
-                free(user_input);
-                user_input = NULL;
+            for (i = 1; i <= menu_len; ++i) {
+                if (available_mods[i]->preotp && available_mods[i]->otp_len) {
+                    if (user_input_len == available_mods[i]->otp_len) {
+                        selected_auth_mod = available_mods[i];
+                        break;
+                    }
+                }
+            }
+            if (selected_auth_mod == NULL) {
+                if (user_input_len == 1 && user_input[0] >= '1' && user_input[0] <= menu_len + '0') {
+                    selected_auth_mod = available_mods[user_input[0] - '0'];
+                    free(user_input);
+                    user_input = NULL;
+                } else {
+                    pam_error(pamh, "Invalid input");
+                    free(user_input);
+                    user_input = NULL;
+                }
             }
         } else if (menu_len == 1) {
             selected_auth_mod = available_mods[1];

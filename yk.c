@@ -14,6 +14,8 @@ int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cf
 const auth_mod yk_auth = {
     .do_auth = &yk_auth_func,
     .name = "Yubikey",
+    .preotp = 1,
+    .otp_len = YK_OTP_LEN,
 };
 
 int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, char *otp) {

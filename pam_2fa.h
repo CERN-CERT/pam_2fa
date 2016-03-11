@@ -84,6 +84,8 @@ typedef int (*auth_func) (pam_handle_t * pamh, user_config * user_cfg, module_co
 typedef struct {
     auth_func do_auth;
     const char * name;
+    _Bool preotp;
+    size_t otp_len;
 } auth_mod;
 
 #define AUTHTOK_INCORRECT "\b\n\r\177INCORRECT"
