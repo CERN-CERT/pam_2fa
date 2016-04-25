@@ -9,6 +9,9 @@ AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([1.11 foreign -Wall -Werror])
 AC_CONFIG_HEADERS([config.h])
 
+# Enable locals like _GNU_SOURCE
+AC_USE_SYSTEM_EXTENSIONS
+
 # Checks for programs.
 AC_PROG_CC
 AM_PROG_CC_C_O
@@ -33,7 +36,7 @@ AC_TYPE_SSIZE_T
 # Checks for library functions.
 AC_FUNC_GETGROUPS
 AC_FUNC_REALLOC
-AC_CHECK_FUNCS([bzero gethostname memmove strchr strdup strrchr strstr])
+AC_CHECK_FUNCS([asprintf bzero gethostname memmove strchr strdup strrchr strstr])
 
 # PAM
 AC_CHECK_LIB([pam], [pam_start])
