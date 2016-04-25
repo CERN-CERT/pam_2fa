@@ -47,8 +47,11 @@ user_config *get_user_config(pam_handle_t * pamh,
     if (cfg->ldap_enabled && non_root) {
 #ifdef HAVE_LDAP
         //GET 2nd FACTORS FROM LDAP
-        if (ldap_search_factors(pamh, cfg, user_cfg->username, user_cfg) < 0) {
-            pam_syslog(pamh, LOG_ERR, "LDAP request failed for user '%s'", user_cfg->username);
+        int rc = ldap_search_factors(pamh, cfg, user_cfg->username, user_cfg);
+        if (rc < 0) {
+            pam_syslog(pamh, LOG_ERR,
+                       "LDAP request failed for user '%s' with error %d",
+                       user_cfg->username, rc);
             free(user_cfg);
             return NULL;
         }
