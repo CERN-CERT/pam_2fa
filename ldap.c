@@ -83,17 +83,19 @@ int ldap_search_factors(pam_handle_t *pamh, const module_config * cfg, const cha
 	    if (!strncmp (v, cfg->gauth_prefix, cfg->gauth_prefix_len)) {
 		if (strlen(v + cfg->gauth_prefix_len) <= GAUTH_LOGIN_LEN) {
 		    strncpy(user_cfg->gauth_login, v + cfg->gauth_prefix_len, GAUTH_LOGIN_LEN + 1);
+                    user_cfg->gauth_login[GAUTH_LOGIN_LEN] = 0;
 		    retval = OK;
 		} else {
 		    DBG(("WARNING: invalid gauth login in LDAP (too long): %s", v + cfg->gauth_prefix_len));
 		}
 	    } else if (!strncmp (v, cfg->sms_prefix, cfg->sms_prefix_len)) {
-		if (strlen(v + cfg->sms_prefix_len) <= SMS_MOBILE_LEN - 1) {
-		    if (v[cfg->sms_prefix_len] == '+')
-			snprintf(user_cfg->sms_mobile, SMS_MOBILE_LEN, "00%s", v + cfg->sms_prefix_len + 1);
-		    else
+		if (strlen(v + cfg->sms_prefix_len) <= SMS_MOBILE_LEN) {
+                    if (v[cfg->sms_prefix_len] == '+') {
+			snprintf(user_cfg->sms_mobile, SMS_MOBILE_LEN+1, "00%s", v + cfg->sms_prefix_len + 1);
+		    } else {
 			strncpy(user_cfg->sms_mobile, v + cfg->sms_prefix_len, SMS_MOBILE_LEN + 1);
-
+                        user_cfg->sms_mobile[SMS_MOBILE_LEN] = 0;
+                    }
 		    retval = OK;
 		} else {
 		    DBG(("WARNING: invalid mobile number in LDAP (too long): %s", v + cfg->sms_prefix_len));
