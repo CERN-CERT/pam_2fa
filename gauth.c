@@ -60,7 +60,7 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
 {
     CURL *curlh = NULL;
     char *p = NULL, *result = NULL;
-    char soap_action[1024], soap_result_tag[1024], soap_result_ok[1024];
+    char *soap_action, *soap_result_tag, *soap_result_ok;
     char http_request[HTTP_BUF_LEN] = { 0 }, curl_error[CURL_ERROR_SIZE] = { 0 };
     struct response_curl http_response = { .size = 0 };
     int retval = 0;
@@ -77,14 +77,18 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
         pam_syslog(pamh, LOG_ERR, "Invalid WS action: %s", cfg->gauth_ws_action);
         return PAM_AUTH_ERR;
     }
-    snprintf(soap_result_tag, 1024, "<%sResult>", p);
-    snprintf(soap_result_ok, 1024, "<%sResult>true</%sResult>", p, p);
-    snprintf(soap_action, 1024, "SOAPAction: \"%s\"", cfg->gauth_ws_action);
 
     //CURL INITIALIZATION
     curlh = curl_easy_init();
     header_list = curl_slist_append(header_list, "Content-Type: text/xml; charset=utf-8");
+
+    if (asprintf(&soap_action, "SOAPAction: \"%s\"", cfg->gauth_ws_action) < 0) {
+        DBG(("Unable to allocate soap_action"))
+        pam_syslog(pamh, LOG_ERR, "Unable to allocate soap_action");
+        return PAM_AUTH_ERR;
+    }
     header_list = curl_slist_append(header_list, soap_action);
+    free(soap_action);
 
     retval = curl_easy_setopt(curlh, CURLOPT_FAILONERROR, 1);
     if (check_curl_ret(retval, curl_error, pamh, cfg)) return cleanup(curlh, header_list);
@@ -151,7 +155,13 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
     // PARSE THE RESPONSE
     http_response.buffer[http_response.size] = 0;
     http_response.size = 0;
+    if (asprintf(&soap_result_tag, "<%sResult>", p) < 0) {
+        DBG(("Unable to allocate soap_result_tag"))
+        pam_syslog(pamh, LOG_ERR, "Unable to allocate soap_result_tag");
+        return PAM_AUTH_ERR;
+    }
     result = strstr(http_response.buffer, soap_result_tag);
+    free(soap_result_tag);
     if (result == NULL) {
         DBG(("Invalid SOAP response: %s", http_response.buffer));
         pam_syslog(pamh, LOG_ERR, "Invalid SOAP response: %s", http_response.buffer);
@@ -159,11 +169,17 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
         return PAM_AUTH_ERR;
     }
 
+    if (asprintf(&soap_result_ok, "<%sResult>true</%sResult>", p, p) < 0) {
+        DBG(("Unable to allocate soap_result_ok"))
+        pam_syslog(pamh, LOG_ERR, "Unable to allocate soap_result_ok");
+        return PAM_AUTH_ERR;
+    }
     if (!strncmp(result, soap_result_ok, strlen(soap_result_ok))) {
         retval = PAM_SUCCESS;
     } else {
         retval = PAM_AUTH_ERR;
     }
+    free(soap_result_ok);
     cleanup(curlh, header_list);
     return retval;
 }
