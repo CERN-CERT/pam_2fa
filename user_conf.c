@@ -71,8 +71,10 @@ user_config *get_user_config(pam_handle_t * pamh,
         }
 
 #ifdef HAVE_CURL
-        if(cfg->gauth_enabled && non_root)
+        if(cfg->gauth_enabled && non_root) {
             strncpy(user_cfg->gauth_login, user_cfg->username, GAUTH_LOGIN_LEN + 1);
+            user_cfg->gauth_login[GAUTH_LOGIN_LEN] = 0;
+        }
 #endif
 
         pam_2fa_drop_priv(pamh, &p, user_entry);
