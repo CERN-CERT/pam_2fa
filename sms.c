@@ -29,13 +29,23 @@ void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg,
                         struct passwd *user_entry, user_config *user_cfg)
 {
     int fd, retval;
-    char filename[1024];
+    char *filename;
     char buf[SMS_MOBILE_LEN+2];
     char *buf_pos;
     size_t i, buf_rem, buf_len;
     ssize_t bytes_read;
 
-    snprintf(filename, 1024, "%s/%s", user_entry->pw_dir, cfg->sms_user_file);
+    ssize_t filename_len = snprintf(NULL, 0, "%s/%s", user_entry->pw_dir, cfg->sms_user_file);
+    if (filename_len < 0) {
+        pam_syslog(pamh, LOG_DEBUG, "Can't compute length of filename");
+        return;
+    }
+    filename = (char*) malloc(filename_len+1);
+    if (NULL == filename) {
+        pam_syslog(pamh, LOG_DEBUG, "Can't allocate filename buffer");
+        return;
+    }
+    snprintf(filename, filename_len+1, "%s/%s", user_entry->pw_dir, cfg->sms_user_file);
 
     {
       // check the exitence of the file
@@ -43,11 +53,13 @@ void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg,
       retval = stat(filename, &st);
       if (retval < 0) {
           pam_syslog(pamh, LOG_DEBUG, "Can't get stats of file '%s'", filename);
+          free(filename);
           return;
       }
 
       if (!S_ISREG(st.st_mode)) {
           pam_syslog(pamh, LOG_ERR, "Not a regular file '%s'", filename);
+          free(filename);
           return;
       }
     }
@@ -55,8 +67,10 @@ void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg,
     fd = open(filename, O_RDONLY);
     if (fd < 0) {
         pam_syslog(pamh, LOG_ERR, "Can't open file '%s'", filename);
+        free(filename);
         return;
     }
+    free(filename);
 
     buf_pos = buf;
     buf_rem = SMS_MOBILE_LEN+1;
