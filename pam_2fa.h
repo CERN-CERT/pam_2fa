@@ -116,6 +116,7 @@ typedef struct {
 #define ERROR_CONNECTION_LDAP_SERVER -101
 #define ERROR_SEARCH_LDAP -102
 #define ERROR_NORESULT_LDAP -103
+#define ERROR_ALLOCATING_BASE -104
 
 #define OK 666
 #define ERROR -1

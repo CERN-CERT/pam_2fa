@@ -13,13 +13,12 @@ int ldap_search_factors(pam_handle_t *pamh, const module_config * cfg, const cha
     int retval;
     size_t yk_id_pos = 0, yk_id_len = 0;
     BerElement *ber = NULL;
-    char base[1024] = { 0 };
+    char *base;
     char *attrs[2] = { cfg->ldap_attr, NULL };
     char *a = NULL;
     BerValue *servercred = NULL;
     BerValue cred = { .bv_len = 0 , .bv_val = 0 };
 
-    snprintf(base, 1024, "CN=%s,%s", username, cfg->ldap_basedn);
     int status = ldap_initialize(&ld, cfg->ldap_uri);
 
     if (status != LDAP_SUCCESS) {
@@ -40,8 +39,20 @@ int ldap_search_factors(pam_handle_t *pamh, const module_config * cfg, const cha
 	return ERROR_BINDING_LDAP_SERVER;
     }
 
+    ssize_t base_len = snprintf(NULL, 0, "CN=%s,%s", username, cfg->ldap_basedn);
+    if (base_len < 0) {
+        ldap_unbind_ext(ld, NULL, NULL);
+        return ERROR_ALLOCATING_BASE;
+    }
+    base = (char*) malloc((size_t)base_len+1);
+    if (NULL == base) {
+        ldap_unbind_ext(ld, NULL, NULL);
+        return ERROR_ALLOCATING_BASE;
+    }
+    snprintf(base, (size_t)base_len+1, "CN=%s,%s", username, cfg->ldap_basedn);
     status = ldap_search_ext_s(ld, base, LDAP_SCOPE_BASE, NULL, attrs, 0, NULL,
                                NULL, LDAP_NO_LIMIT, LDAP_NO_LIMIT, &result);
+    free(base);
 
     if (status != LDAP_SUCCESS) {
 	DBG(("LDAP error: %s", ldap_err2string(status)));
