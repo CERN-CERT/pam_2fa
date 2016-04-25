@@ -95,7 +95,6 @@ void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg,
 void* sms_pre_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg) {
     int retval;
     char * code;
-    char dst[1024], txt[2048];
 
     code = malloc(cfg->sms_otp_length + 1);
     if (code == NULL) {
@@ -107,15 +106,28 @@ void* sms_pre_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_con
     rnd_numb(code, (int) cfg->sms_otp_length);
 
     if (user_cfg->sms_mobile[0]) {
-        //SEND CODE WITH EMAIL/SMS 
-        snprintf(dst, 1024, "%s@%s", user_cfg->sms_mobile, cfg->sms_gateway);
-        snprintf(txt, 2048, "%s%s", cfg->sms_text, code);
+        char * dst, * txt;
+        if (asprintf(&dst, "%s@%s", user_cfg->sms_mobile, cfg->sms_gateway) < 0) {
+            pam_syslog(pamh, LOG_ERR, "%s Failed to allocate SMS destination", LOG_PREFIX);
+            pam_prompt(pamh, PAM_ERROR_MSG, NULL, "Failed to allocate SMS destination");
+            free(code);
+            return NULL;
+        }
+        if (asprintf(&txt, "%s%s", cfg->sms_text, code) < 0) {
+            pam_syslog(pamh, LOG_ERR, "%s Failed to allocate SMS text", LOG_PREFIX);
+            pam_prompt(pamh, PAM_ERROR_MSG, NULL, "Failed to allocate SMS text");
+            free(code);
+            free(dst);
+            return NULL;
+        }
 
         DBG(("Mail [%s] %s: %s", dst, cfg->sms_subject, txt));
         pam_syslog(pamh, LOG_DEBUG, "Sending SMS to %s", dst);
         retval = send_mail(dst, txt, cfg);
         DBG(("Return status = %d", retval));
 
+        free(dst);
+        free(txt);
         if (retval != 0) {
             pam_syslog(pamh, LOG_ERR, "%s Failed to send authentication code by SMS!",
                        LOG_PREFIX);
