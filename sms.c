@@ -35,17 +35,10 @@ void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg,
     size_t i, buf_rem, buf_len;
     ssize_t bytes_read;
 
-    ssize_t filename_len = snprintf(NULL, 0, "%s/%s", user_entry->pw_dir, cfg->sms_user_file);
-    if (filename_len < 0) {
-        pam_syslog(pamh, LOG_DEBUG, "Can't compute length of filename");
-        return;
-    }
-    filename = (char*) malloc(filename_len+1);
-    if (NULL == filename) {
+    if (asprintf(&filename, "%s/%s", user_entry->pw_dir, cfg->sms_user_file) < 0) {
         pam_syslog(pamh, LOG_DEBUG, "Can't allocate filename buffer");
         return;
     }
-    snprintf(filename, filename_len+1, "%s/%s", user_entry->pw_dir, cfg->sms_user_file);
 
     {
       // check the exitence of the file
