@@ -103,12 +103,16 @@ int yk_load_user_file(pam_handle_t *pamh, const module_config *cfg, struct passw
     int fd, retval;
     ssize_t bytes_read = 0;
     size_t yk_id_pos = 0, yk_id_len = 0;
-    char filename[1024], buf[2048];
+    char *filename;
+    char buf[2048];
     char *buf_pos = NULL, *buf_next_line = NULL;
     char **yk_publicids = NULL;
     size_t buf_len = 0, buf_remaining_len = 0;
 
-    snprintf(filename, 1024, "%s/%s", user_entry->pw_dir, cfg->yk_user_file);
+    if (asprintf(&filename, "%s/%s", user_entry->pw_dir, cfg->yk_user_file) < 0) {
+        pam_syslog(pamh, LOG_DEBUG, "Can't allocate filename buffer");
+        return ERROR;
+    }
 
     {
       // check the exitence of the file
@@ -116,10 +120,12 @@ int yk_load_user_file(pam_handle_t *pamh, const module_config *cfg, struct passw
       retval = stat(filename, &st);
       if(retval < 0) {
         pam_syslog(pamh, LOG_ERR, "Can't get stats of file '%s'", filename);
+        free(filename);
         return ERROR;
       }
       if(!S_ISREG(st.st_mode)) {
         pam_syslog(pamh, LOG_ERR, "Not a regular file '%s'", filename);
+        free(filename);
         return ERROR;
       }
     }
@@ -127,8 +133,10 @@ int yk_load_user_file(pam_handle_t *pamh, const module_config *cfg, struct passw
     fd = open(filename, O_RDONLY);
     if(fd < 0) {
         pam_syslog(pamh, LOG_ERR, "Can't open file '%s'", filename);
+        free(filename);
         return ERROR;
     }
+    free(filename);
 
     buf_pos = buf;
     buf_len = sizeof(buf) / sizeof(char);
