@@ -192,6 +192,7 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
 
         if (0 == retval) {
             pam_syslog(pamh, LOG_ERR, "Invalid option: %s", argv[i]);
+            free_config(cfg);
             return CONFIG_ERROR;
         } else if (retval < 0) {
             mem_error = retval;
