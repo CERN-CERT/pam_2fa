@@ -7,7 +7,8 @@ if COMPILER_IS_CLANG
   AM_CFLAGS = -Weverything \
         -Wno-padded \
         -Wno-disabled-macro-expansion \
-        -Wno-unused-parameter
+        -Wno-unused-parameter \
+        -Wno-reserved-id-macro
 else
   AM_CFLAGS = -Wall -Wextra \
         -Wbad-function-cast \
