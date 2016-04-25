@@ -35,8 +35,9 @@ AC_TYPE_SSIZE_T
 
 # Checks for library functions.
 AC_FUNC_GETGROUPS
+AC_FUNC_MALLOC
 AC_FUNC_REALLOC
-AC_CHECK_FUNCS([asprintf bzero gethostname memmove strchr strdup strrchr strstr])
+AC_CHECK_FUNCS([asprintf bzero gethostname memset memmove strchr strdup strrchr strstr])
 
 # PAM
 AC_CHECK_LIB([pam], [pam_start])
