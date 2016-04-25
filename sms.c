@@ -78,15 +78,15 @@ void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg,
     while ((bytes_read = read(fd, buf_pos, buf_rem)) > 0) {
         buf_pos += (size_t)bytes_read; // This is always > 0 by construct
         buf_rem = (size_t)((ssize_t)buf_rem - bytes_read);
-        *buf_pos = 0;
         if (buf_rem == 0)
             break;
     }
+    *buf_pos = 0;
     close(fd);
 
-    buf_len = (size_t)(buf_pos - buf); // This is always > 0 by construct
+    buf_len = (size_t)(buf_pos - buf); // This is always >= 0 by construct
     if (buf_len > SMS_MOBILE_LEN) {
-        pam_syslog(pamh, LOG_ERR, "SMS number too small (%li)'", buf_pos - buf);
+        pam_syslog(pamh, LOG_ERR, "SMS number too long (%li)'", buf_pos - buf);
         return;
     }
 
