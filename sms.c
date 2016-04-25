@@ -9,8 +9,6 @@
 
 #include "pam_2fa.h"
 
-static char from[512] = { 0 };
-
 static int send_mail(char *dst, char *text, module_config *cfg);
 static int rnd_numb(char *otp, int length);
 
@@ -160,12 +158,15 @@ int sms_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * 
 
 static int send_mail(char *dst, char *text, module_config *cfg)
 {
+#ifndef HOST_NAME_MAX
+#define HOST_NAME_MAX 512
+#endif /* HOST_NAME_MAX */
     int ret;
+    char from[HOST_NAME_MAX+1];
     char command[4096];
 
-    if (*from == 0) {
-	gethostname(from, 512);
-    }
+    gethostname(from, HOST_NAME_MAX + 1);
+    from[HOST_NAME_MAX] = '\0';
 
     snprintf(command, 4096, "echo %s | mail -r '%s' -s '%s' '%s'", text,
 	     from, cfg->sms_subject, dst);
