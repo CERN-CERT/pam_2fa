@@ -39,17 +39,10 @@ int ldap_search_factors(pam_handle_t *pamh, const module_config * cfg, const cha
 	return ERROR_BINDING_LDAP_SERVER;
     }
 
-    ssize_t base_len = snprintf(NULL, 0, "CN=%s,%s", username, cfg->ldap_basedn);
-    if (base_len < 0) {
+    if (asprintf(&base, "CN=%s,%s", username, cfg->ldap_basedn) < 0) {
         ldap_unbind_ext(ld, NULL, NULL);
         return ERROR_ALLOCATING_BASE;
     }
-    base = (char*) malloc((size_t)base_len+1);
-    if (NULL == base) {
-        ldap_unbind_ext(ld, NULL, NULL);
-        return ERROR_ALLOCATING_BASE;
-    }
-    snprintf(base, (size_t)base_len+1, "CN=%s,%s", username, cfg->ldap_basedn);
     status = ldap_search_ext_s(ld, base, LDAP_SCOPE_BASE, NULL, attrs, 0, NULL,
                                NULL, LDAP_NO_LIMIT, LDAP_NO_LIMIT, &result);
     free(base);
