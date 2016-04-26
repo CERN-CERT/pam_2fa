@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <time.h>
 
 #include "pam_2fa.h"
@@ -173,19 +174,54 @@ static int send_mail(char *dst, char *text, module_config *cfg)
 #ifndef HOST_NAME_MAX
 #define HOST_NAME_MAX 512
 #endif /* HOST_NAME_MAX */
-    int ret;
     char from[HOST_NAME_MAX+1];
-    char command[4096];
+    pid_t child_pid;
+    int child_stdin[2];
+    char * const child_args[7] = { "mail", "-r", from, "-s", cfg->sms_subject, dst, NULL };
 
     gethostname(from, HOST_NAME_MAX + 1);
     from[HOST_NAME_MAX] = '\0';
 
-    snprintf(command, 4096, "echo %s | mail -r '%s' -s '%s' '%s'", text,
-	     from, cfg->sms_subject, dst);
-    DBG(("Mail command = '%s'", command));
-    ret = system(command);
+    if (pipe(child_stdin) < 0) {
+        DBG((Unable to call 'pipe'))
+        return -1;
+    }
+    child_pid = fork();
+    switch (child_pid) {
+    case -1:
+        DBG(("Fork failure"));
+        return -1;
+    case 0:
+        // Child process
+        if (dup2(child_stdin[0], STDIN_FILENO) < 0)
+            exit(-1);
+        close(child_stdin[1]);
 
-    return ret;
+        execv("/bin/mail", child_args);
+        // Should not be taken
+        exit(-1);
+    default:
+        // Parent process
+        close(child_stdin[0]);
+        {
+            ssize_t written;
+            size_t pos = 0;
+            size_t text_len = strlen(text);
+            while ((written = write(child_stdin[1], text + pos, text_len - pos)) > 0 ) {
+                pos += (size_t) written; // This is > 0 due to the check on the previous line
+                if (text_len >= pos)
+                    break;
+            }
+        }
+        close(child_stdin[1]);
+        {
+            int ret;
+            if (waitpid(child_pid, &ret, 0) == child_pid)
+                if (WIFEXITED(ret))
+                    return WEXITSTATUS(ret);
+        }
+        return -1;
+    }
 }
 
 static int rnd_numb(char *otp, int length)

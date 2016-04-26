@@ -29,15 +29,17 @@ AC_CHECK_HEADERS([security/pam_appl.h] [security/pam_modules.h] [security/pam_ex
   [AC_MSG_ERROR([[PAM header files not found, install pam-devel/libpam-dev.]])])
 
 # Checks for typedefs, structures, and compiler characteristics.
+AC_TYPE_PID_T
 AC_TYPE_UID_T
 AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T
 
 # Checks for library functions.
+AC_FUNC_FORK
 AC_FUNC_GETGROUPS
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
-AC_CHECK_FUNCS([asprintf bzero gethostname memset memmove strchr strdup strrchr strstr])
+AC_CHECK_FUNCS([asprintf bzero dup2 gethostname memset memmove strchr strdup strrchr strstr])
 
 # PAM
 AC_CHECK_LIB([pam], [pam_start])

@@ -1,8 +1,10 @@
-policy_module(pam_2fa,1.0.0)
+policy_module(pam_2fa,1.1.0)
 
 require {
     type sshd_t;
+    role system_r;
 }
 
 corenet_tcp_connect_http_port(sshd_t)
 corenet_tcp_connect_ldap_port(sshd_t)
+sendmail_run(sshd_t, system_r)
