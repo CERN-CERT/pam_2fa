@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.63])
-AC_INIT([pam_2fa], [0.1], [Computer.Security@cern.ch])
+AC_INIT([pam_2fa], [1.0], [Computer.Security@cern.ch])
 AC_CONFIG_SRCDIR([pam_2fa.c])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
