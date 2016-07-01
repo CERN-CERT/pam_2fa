@@ -1,14 +1,14 @@
-From 469485af96607ab749b92b56fe0edf8fe5873469 Mon Sep 17 00:00:00 2001
-From: Vincent Brillault <vincent.brillault@cern.ch>
-Date: Tue, 1 Dec 2015 15:16:22 +0100
-Subject: [PATCH 5/8] auth2-pubkey: fill last_details on success
+From 0b3ab2e56f34954f7a4e3ff52014566adc958e80 Mon Sep 17 00:00:00 2001
+From: Vincent Brillault <git@lerya.net>
+Date: Wed, 18 Nov 2015 21:32:06 +0100
+Subject: [PATCH 05/17] auth2-pubkey: fill last_details on success
 
 ---
  auth2-pubkey.c | 11 ++++++++---
  1 file changed, 8 insertions(+), 3 deletions(-)
 
 diff --git a/auth2-pubkey.c b/auth2-pubkey.c
-index a639fe5..986b20d 100644
+index 759c26b..aa5deab 100644
 --- a/auth2-pubkey.c
 +++ b/auth2-pubkey.c
 @@ -75,7 +75,7 @@ userauth_pubkey(Authctxt *authctxt)
@@ -43,5 +43,5 @@ index a639fe5..986b20d 100644
  		free(sig);
  	} else {
 -- 
-1.8.3.1
+2.9.0
 

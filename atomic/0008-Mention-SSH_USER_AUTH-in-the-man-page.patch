@@ -1,17 +1,17 @@
-From d457e378dc20a0c22fcb2c0f268cd4f1912d8e40 Mon Sep 17 00:00:00 2001
-From: Vincent Brillault <vincent.brillault@cern.ch>
-Date: Tue, 1 Dec 2015 15:28:14 +0100
-Subject: [PATCH 8/8] Mention SSH_USER_AUTH in the man page
+From 4c2ee4553564b7c19c199356bf8262ca0ee59834 Mon Sep 17 00:00:00 2001
+From: Vincent Brillault <git@lerya.net>
+Date: Thu, 19 Nov 2015 21:31:29 +0100
+Subject: [PATCH 08/17] Mention SSH_USER_AUTH in the man page
 
 ---
  ssh.1 | 4 ++++
  1 file changed, 4 insertions(+)
 
 diff --git a/ssh.1 b/ssh.1
-index f65e42f..60334c2 100644
+index c795c40..14e8dda 100644
 --- a/ssh.1
 +++ b/ssh.1
-@@ -1284,6 +1284,10 @@ server IP address, and server port number.
+@@ -1289,6 +1289,10 @@ server IP address, and server port number.
  This variable contains the original command line if a forced command
  is executed.
  It can be used to extract the original arguments.
@@ -23,5 +23,5 @@ index f65e42f..60334c2 100644
  This is set to the name of the tty (path to the device) associated
  with the current shell or command.
 -- 
-1.8.3.1
+2.9.0
 

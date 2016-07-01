@@ -1,0 +1,53 @@
+From f3577dc05ec849102e42e8ba8c1543499b640e11 Mon Sep 17 00:00:00 2001
+From: Vincent Brillault <vincent.brillault@cern.ch>
+Date: Fri, 26 Feb 2016 11:21:23 +0100
+Subject: [PATCH 14/17] Always clean last_details, even for authentication
+ failures
+
+last_details is supposed to be only filled on authentication success, but may
+be incorrectly filled in the future. This patch make sure that this field is
+cleaned even on authentication failures to make sure than even incorrect
+authentication modules cannot polute the SSH_USER_AUTH string for another
+module
+---
+ auth2.c   | 4 ++--
+ monitor.c | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/auth2.c b/auth2.c
+index b7ba160..7c975f6 100644
+--- a/auth2.c
++++ b/auth2.c
+@@ -344,10 +344,10 @@ userauth_finish(Authctxt *authctxt, int authenticated, const char *method,
+ 		    prev_auth_details ? ", " : "", method,
+ 		    authctxt->last_details ? ": " : "",
+ 		    authctxt->last_details ? authctxt->last_details : "");
+-		free(authctxt->last_details);
+-		authctxt->last_details = NULL;
+ 		free(prev_auth_details);
+ 	}
++	free(authctxt->last_details);
++	authctxt->last_details = NULL;
+ 
+ #ifdef USE_PAM
+ 	if (options.use_pam && authenticated) {
+diff --git a/monitor.c b/monitor.c
+index ca61729..49173b8 100644
+--- a/monitor.c
++++ b/monitor.c
+@@ -428,10 +428,10 @@ monitor_child_preauth(Authctxt *_authctxt, struct monitor *pmonitor)
+ 			    prev_auth_details ? ", " : "", auth_method,
+ 			    authctxt->last_details ? ": " : "",
+ 			    authctxt->last_details ? authctxt->last_details : "");
+-			free(authctxt->last_details);
+-			authctxt->last_details = NULL;
+ 			free(prev_auth_details);
+ 		}
++		free(authctxt->last_details);
++		authctxt->last_details = NULL;
+ 
+ 		/* Special handling for multiple required authentications */
+ 		if (options.num_auth_methods != 0) {
+-- 
+2.9.0
+

@@ -1,20 +1,21 @@
 diff --git a/auth-pam.c b/auth-pam.c
-index 690711e..fd8bde1 100644
+index 690711e..c1dbf0b 100644
 --- a/auth-pam.c
 +++ b/auth-pam.c
-@@ -693,6 +693,10 @@ sshpam_init_ctx(Authctxt *authctxt)
+@@ -693,6 +693,11 @@ sshpam_init_ctx(Authctxt *authctxt)
  		return (NULL);
  	}
  
 +	/* Notify PAM about any already successful auth methods */
-+	if (authctxt->auth_details)
++	if (options.expose_auth_methods >= EXPOSE_AUTHMETH_PAMONLY &&
++			authctxt->auth_details)
 +		do_pam_putenv("SSH_USER_AUTH", authctxt->auth_details);
 +
  	ctxt = xcalloc(1, sizeof *ctxt);
  
  	/* Start the authentication thread */
 diff --git a/auth.h b/auth.h
-index f9d191c..53fa20e 100644
+index f9d191c..6c31f33 100644
 --- a/auth.h
 +++ b/auth.h
 @@ -78,6 +78,9 @@ struct Authctxt {
@@ -22,21 +23,37 @@ index f9d191c..53fa20e 100644
  	Buffer		*loginmsg;
  	void		*methoddata;
 +
-+	char            *last_details;
-+	char            *auth_details;
++	char		*last_details;
++	char		*auth_details;
  };
  /*
   * Every authentication method has to handle authentication requests for
-@@ -124,6 +127,7 @@ int	 auth_rsa_key_allowed(struct passwd *, BIGNUM *, Key **);
- int	 auth_rhosts_rsa_key_allowed(struct passwd *, char *, char *, Key *);
- int	 hostbased_key_allowed(struct passwd *, const char *, char *, Key *);
- int	 user_key_allowed(struct passwd *, Key *);
-+char	*pubkey_format(const Key *key);
- void	 pubkey_auth_info(Authctxt *, const Key *, const char *, ...)
- 	    __attribute__((__format__ (printf, 3, 4)));
+diff --git a/auth2-gss.c b/auth2-gss.c
+index ad65059..6089d20 100644
+--- a/auth2-gss.c
++++ b/auth2-gss.c
+@@ -272,6 +272,9 @@ input_gssapi_exchange_complete(int type, u_int32_t plen, void *ctxt)
+ 	authenticated = PRIVSEP(ssh_gssapi_userok(authctxt->user,
+ 	    authctxt->pw));
  
++	if (authenticated)
++		authctxt->last_details = ssh_gssapi_get_displayname();
++
+ 	authctxt->postponed = 0;
+ 	dispatch_set(SSH2_MSG_USERAUTH_GSSAPI_TOKEN, NULL);
+ 	dispatch_set(SSH2_MSG_USERAUTH_GSSAPI_ERRTOK, NULL);
+@@ -317,6 +320,9 @@ input_gssapi_mic(int type, u_int32_t plen, void *ctxt)
+ 	else
+ 		logit("GSSAPI MIC check failed");
+ 
++	if (authenticated)
++		authctxt->last_details = ssh_gssapi_get_displayname();
++
+ 	buffer_free(&b);
+ 	if (micuser != authctxt->user)
+ 		free(micuser);
 diff --git a/auth2-hostbased.c b/auth2-hostbased.c
-index 48aede4..41c225f 100644
+index 48aede4..7a115c8 100644
 --- a/auth2-hostbased.c
 +++ b/auth2-hostbased.c
 @@ -58,7 +58,7 @@ userauth_hostbased(Authctxt *authctxt)
@@ -52,11 +69,12 @@ index 48aede4..41c225f 100644
  	buffer_dump(&b);
  #endif
  
-+	pubkey = pubkey_format(key);
- 	pubkey_auth_info(authctxt, key,
+-	pubkey_auth_info(authctxt, key,
 -	    "client user \"%.100s\", client host \"%.100s\"", cuser, chost);
-+	    "%s, client user \"%.100s\", client host \"%.100s\"", pubkey,
-+	    cuser, chost);
++	pubkey = key_format_oneline(key);
++	auth_info(authctxt,
++	    "%s, client user \"%.100s\", client host \"%.100s\"",
++	    pubkey, cuser, chost);
  
  	/* test for allowed key and correct signature */
  	authenticated = 0;
@@ -73,7 +91,7 @@ index 48aede4..41c225f 100644
  	buffer_free(&b);
  done:
 diff --git a/auth2-pubkey.c b/auth2-pubkey.c
-index 3808ec8..986b20d 100644
+index 3808ec8..fded8e0 100644
 --- a/auth2-pubkey.c
 +++ b/auth2-pubkey.c
 @@ -75,7 +75,7 @@ userauth_pubkey(Authctxt *authctxt)
@@ -90,7 +108,7 @@ index 3808ec8..986b20d 100644
  		buffer_dump(&b);
  #endif
 -		pubkey_auth_info(authctxt, key, NULL);
-+		pubkey = pubkey_format(key);
++		pubkey = key_format_oneline(key);
 +		auth_info(authctxt, "%s", pubkey);
  
  		/* test for correct signature */
@@ -112,11 +130,11 @@ index 3808ec8..986b20d 100644
  pubkey_auth_info(Authctxt *authctxt, const Key *key, const char *fmt, ...)
  {
 -	char *fp, *extra;
-+	char *pubkey, *extra;
++	char *extra, *pubkey;
  	va_list ap;
  	int i;
  
-@@ -210,24 +215,35 @@ pubkey_auth_info(Authctxt *authctxt, const Key *key, const char *fmt, ...)
+@@ -210,23 +215,13 @@ pubkey_auth_info(Authctxt *authctxt, const Key *key, const char *fmt, ...)
  		i = vasprintf(&extra, fmt, ap);
  		va_end(ap);
  		if (i < 0 || extra == NULL)
@@ -124,43 +142,29 @@ index 3808ec8..986b20d 100644
 +			fatal("%s: vasprintf failed", __func__);
  	}
  
-+	pubkey = pubkey_format(key);
+-	if (key_is_cert(key)) {
+-		fp = key_selected_fingerprint(key->cert->signature_key, SSH_FP_HEX);
+-		auth_info(authctxt, "%s ID %s (serial %llu) CA %s %s%s%s", 
+-		    key_type(key), key->cert->key_id,
+-		    (unsigned long long)key->cert->serial,
+-		    key_type(key->cert->signature_key), fp,
+-		    extra == NULL ? "" : ", ", extra == NULL ? "" : extra);
+-		free(fp);
+-	} else {
+-		fp = key_selected_fingerprint(key, SSH_FP_HEX);
+-		auth_info(authctxt, "%s %s%s%s", key_type(key), fp,
+-		    extra == NULL ? "" : ", ", extra == NULL ? "" : extra);
+-		free(fp);
+-	}
++	pubkey = key_format_oneline(key);
 +	auth_info(authctxt, "%s%s%s", pubkey, extra == NULL ? "" : ", ",
 +	    extra == NULL ? "" : extra);
 +	free(pubkey);
-+	free(extra);
-+}
-+
-+char *
-+pubkey_format(const Key *key)
-+{
-+	char *fp, *result;
-+
- 	if (key_is_cert(key)) {
- 		fp = key_selected_fingerprint(key->cert->signature_key, SSH_FP_HEX);
--		auth_info(authctxt, "%s ID %s (serial %llu) CA %s %s%s%s", 
-+		xasprintf(&result, "%s ID %s (serial %llu) CA %s %s",
- 		    key_type(key), key->cert->key_id,
- 		    (unsigned long long)key->cert->serial,
--		    key_type(key->cert->signature_key), fp,
--		    extra == NULL ? "" : ", ", extra == NULL ? "" : extra);
-+		    key_type(key->cert->signature_key), fp);
- 		free(fp);
- 	} else {
- 		fp = key_selected_fingerprint(key, SSH_FP_HEX);
--		auth_info(authctxt, "%s %s%s%s", key_type(key), fp,
--		    extra == NULL ? "" : ", ", extra == NULL ? "" : extra);
-+		xasprintf(&result, "%s %s", key_type(key), fp);
- 		free(fp);
- 	}
--	free(extra);
-+
-+	return result;
+ 	free(extra);
  }
  
- int
 diff --git a/auth2.c b/auth2.c
-index 436cd60..b7ba160 100644
+index 436cd60..7c975f6 100644
 --- a/auth2.c
 +++ b/auth2.c
 @@ -306,6 +306,7 @@ userauth_finish(Authctxt *authctxt, int authenticated, const char *method,
@@ -182,16 +186,78 @@ index 436cd60..b7ba160 100644
 +		    prev_auth_details ? ", " : "", method,
 +		    authctxt->last_details ? ": " : "",
 +		    authctxt->last_details ? authctxt->last_details : "");
-+		free(authctxt->last_details);
-+		authctxt->last_details = NULL;
 +		free(prev_auth_details);
 +	}
++	free(authctxt->last_details);
++	authctxt->last_details = NULL;
 +
  #ifdef USE_PAM
  	if (options.use_pam && authenticated) {
  		if (!PRIVSEP(do_pam_account())) {
+diff --git a/gss-serv.c b/gss-serv.c
+index 7d0ffff..94408d9 100644
+--- a/gss-serv.c
++++ b/gss-serv.c
+@@ -471,6 +471,16 @@ ssh_gssapi_userok(char *user, struct passwd *pw)
+ 	return (0);
+ }
+ 
++/* Privileged */
++char*
++ssh_gssapi_get_displayname(void)
++{
++	if (gssapi_client.displayname.length != 0 &&
++	    gssapi_client.displayname.value != NULL)
++		return strdup((char *)gssapi_client.displayname.value);
++	return NULL;
++}
++
+ /* These bits are only used for rekeying. The unpriviledged child is running 
+  * as the user, the monitor is root.
+  *
+diff --git a/key.c b/key.c
+index 6487d81..5752471 100644
+--- a/key.c
++++ b/key.c
+@@ -2689,3 +2689,24 @@ key_private_deserialize(Buffer *blob)
+ 	}
+ 	return k;
+ }
++
++char *
++key_format_oneline(const Key *key)
++{
++	char *fp, *result;
++
++	if (key_is_cert(key)) {
++		fp = key_selected_fingerprint(key->cert->signature_key, SSH_FP_HEX);
++		xasprintf(&result, "%s ID %s (serial %llu) CA %s %s",
++		    key_type(key), key->cert->key_id,
++		    (unsigned long long)key->cert->serial,
++		    key_type(key->cert->signature_key), fp);
++		free(fp);
++	} else {
++		fp = key_selected_fingerprint(key, SSH_FP_HEX);
++		xasprintf(&result, "%s %s", key_type(key), fp);
++		free(fp);
++	}
++
++	return result;
++}
+diff --git a/key.h b/key.h
+index 8f61605..72b3876 100644
+--- a/key.h
++++ b/key.h
+@@ -108,6 +108,7 @@ u_char		*key_fingerprint_raw(const Key *, enum fp_type, u_int *);
+ enum fp_type	 key_fingerprint_selection(void);
+ char		*key_selected_fingerprint(Key *, enum fp_rep);
+ char		*key_fingerprint_prefix(void);
++char		*key_format_oneline(const Key *key);
+ const char	*key_type(const Key *);
+ const char	*key_cert_type(const Key *);
+ int		 key_write(const Key *, FILE *);
 diff --git a/monitor.c b/monitor.c
-index 55575ed..660038e 100644
+index 9dadb6a..49173b8 100644
 --- a/monitor.c
 +++ b/monitor.c
 @@ -383,6 +383,7 @@ monitor_child_preauth(Authctxt *_authctxt, struct monitor *pmonitor)
@@ -202,37 +268,186 @@ index 55575ed..660038e 100644
  
  	debug3("preauth child monitor started");
  
-@@ -420,6 +421,14 @@ monitor_child_preauth(Authctxt *_authctxt, struct monitor *pmonitor)
+@@ -420,6 +421,18 @@ monitor_child_preauth(Authctxt *_authctxt, struct monitor *pmonitor)
  		auth_submethod = NULL;
  		authenticated = (monitor_read(pmonitor, mon_dispatch, &ent) == 1);
  
 +		if (authenticated) {
 +			prev_auth_details = authctxt->auth_details;
-+			xasprintf(&authctxt->auth_details, "%s%s%s",
++			xasprintf(&authctxt->auth_details, "%s%s%s%s%s",
 +			    prev_auth_details ? prev_auth_details : "",
-+			    prev_auth_details ? ", " : "", auth_method);
++			    prev_auth_details ? ", " : "", auth_method,
++			    authctxt->last_details ? ": " : "",
++			    authctxt->last_details ? authctxt->last_details : "");
 +			free(prev_auth_details);
 +		}
++		free(authctxt->last_details);
++		authctxt->last_details = NULL;
 +
  		/* Special handling for multiple required authentications */
  		if (options.num_auth_methods != 0) {
  			if (!compat20)
+@@ -1473,6 +1486,9 @@ mm_answer_keyverify(int sock, Buffer *m)
+ 	debug3("%s: key %p signature %s",
+ 	    __func__, key, (verified == 1) ? "verified" : "unverified");
+ 
++	if (verified == 1)
++		authctxt->last_details = key_format_oneline(key);
++
+ 	key_free(key);
+ 	free(blob);
+ 	free(signature);
+@@ -2322,6 +2338,9 @@ mm_answer_gss_userok(int sock, Buffer *m)
+ 
+ 	auth_method = "gssapi-with-mic";
+ 
++	if (authenticated)
++                authctxt->last_details = ssh_gssapi_get_displayname();
++
+ 	/* Monitor loop will terminate if authenticated */
+ 	return (authenticated);
+ }
+diff --git a/servconf.c b/servconf.c
+index 17b8a2f..d339276 100644
+--- a/servconf.c
++++ b/servconf.c
+@@ -161,6 +161,7 @@ initialize_server_options(ServerOptions *options)
+ 	options->version_addendum = NULL;
+ 	options->use_kuserok = -1;
+ 	options->enable_k5users = -1;
++	options->expose_auth_methods = -1;
+ }
+ 
+ void
+@@ -336,6 +337,8 @@ fill_default_server_options(ServerOptions *options)
+ 	}
+ #endif
+ 
++	if (options->expose_auth_methods == -1)
++		options->expose_auth_methods = EXPOSE_AUTHMETH_NEVER;
+ }
+ 
+ /* Keyword tokens. */
+@@ -372,6 +375,7 @@ typedef enum {
+ 	sKexAlgorithms, sIPQoS, sVersionAddendum,
+ 	sAuthorizedKeysCommand, sAuthorizedKeysCommandUser,
+ 	sAuthenticationMethods, sHostKeyAgent,
++	sExposeAuthenticationMethods,
+ 	sDeprecated, sUnsupported
+ } ServerOpCodes;
+ 
+@@ -515,6 +519,7 @@ static struct {
+ 	{ "authorizedkeyscommanduser", sAuthorizedKeysCommandUser, SSHCFG_ALL },
+ 	{ "versionaddendum", sVersionAddendum, SSHCFG_GLOBAL },
+ 	{ "authenticationmethods", sAuthenticationMethods, SSHCFG_ALL },
++	{ "exposeauthenticationmethods", sExposeAuthenticationMethods, SSHCFG_ALL },
+ 	{ NULL, sBadOption, 0 }
+ };
+ 
+@@ -861,6 +866,12 @@ static const struct multistate multistate_tcpfwd[] = {
+ 	{ "local",			FORWARD_LOCAL },
+ 	{ NULL, -1 }
+ };
++static const struct multistate multistate_exposeauthmeth[] = {
++	{ "never",                      EXPOSE_AUTHMETH_NEVER },
++	{ "pam-only",                   EXPOSE_AUTHMETH_PAMONLY },
++	{ "pam-and-env",                EXPOSE_AUTHMETH_PAMENV },
++	{ NULL, -1}
++};
+ 
+ int
+ process_server_config_line(ServerOptions *options, char *line,
+@@ -1700,6 +1711,11 @@ process_server_config_line(ServerOptions *options, char *line,
+ 		}
+ 		return 0;
+ 
++	case sExposeAuthenticationMethods:
++		intptr = &options->expose_auth_methods;
++		multistate_ptr = multistate_exposeauthmeth;
++		goto parse_multistate;
++
+ 	case sDeprecated:
+ 		logit("%s line %d: Deprecated option %s",
+ 		    filename, linenum, arg);
+@@ -1856,6 +1872,7 @@ copy_set_server_options(ServerOptions *dst, ServerOptions *src, int preauth)
+ 	M_CP_INTOPT(enable_k5users);
+ 	M_CP_INTOPT(rekey_limit);
+ 	M_CP_INTOPT(rekey_interval);
++	M_CP_INTOPT(expose_auth_methods);
+ 
+ 	/* M_CP_STROPT and M_CP_STRARRAYOPT should not appear before here */
+ #define M_CP_STROPT(n) do {\
+@@ -1944,6 +1961,8 @@ fmt_intarg(ServerOpCodes code, int val)
+ 		return fmt_multistate_int(val, multistate_privsep);
+ 	case sAllowTcpForwarding:
+ 		return fmt_multistate_int(val, multistate_tcpfwd);
++	case sExposeAuthenticationMethods:
++		return fmt_multistate_int(val, multistate_exposeauthmeth);
+ 	case sProtocol:
+ 		switch (val) {
+ 		case SSH_PROTO_1:
+@@ -2113,6 +2132,7 @@ dump_config(ServerOptions *o)
+ 	dump_cfg_fmtint(sUsePrivilegeSeparation, use_privsep);
+ 	dump_cfg_fmtint(sKerberosUseKuserok, o->use_kuserok);
+ 	dump_cfg_fmtint(sGssEnablek5users, o->enable_k5users);
++	dump_cfg_fmtint(sExposeAuthenticationMethods, o->expose_auth_methods);
+ 
+ 	/* string arguments */
+ 	dump_cfg_string(sPidFile, o->pid_file);
+diff --git a/servconf.h b/servconf.h
+index ae4fef4..8930325 100644
+--- a/servconf.h
++++ b/servconf.h
+@@ -48,6 +48,11 @@
+ #define FORWARD_LOCAL		(1<<1)
+ #define FORWARD_ALLOW		(FORWARD_REMOTE|FORWARD_LOCAL)
+ 
++/* Expose AuthenticationMethods */
++#define EXPOSE_AUTHMETH_NEVER   0
++#define EXPOSE_AUTHMETH_PAMONLY 1
++#define EXPOSE_AUTHMETH_PAMENV  2
++
+ #define DEFAULT_AUTH_FAIL_MAX	6	/* Default for MaxAuthTries */
+ #define DEFAULT_SESSIONS_MAX	10	/* Default for MaxSessions */
+ 
+@@ -190,6 +195,7 @@ typedef struct {
+ 
+ 	u_int	num_auth_methods;
+ 	char   *auth_methods[MAX_AUTH_METHODS];
++	int	expose_auth_methods; /* EXPOSE_AUTHMETH_* above */
+ }       ServerOptions;
+ 
+ /* Information about the incoming connection as used by Match */
 diff --git a/session.c b/session.c
-index e2ab34f..2c90943 100644
+index 57c1f80..6ffc827 100644
 --- a/session.c
 +++ b/session.c
-@@ -1365,6 +1365,10 @@ do_setup_env(Session *s, const char *shell)
+@@ -1208,6 +1208,12 @@ copy_environment(char **source, char ***env, u_int *envsize)
+ 		}
+ 		*var_val++ = '\0';
+ 
++		if (options.expose_auth_methods < EXPOSE_AUTHMETH_PAMENV &&
++				strcmp(var_name, "SSH_USER_AUTH") == 0) {
++			free(var_name);
++			continue;
++		}
++
+ 		debug3("Copy environment: %s=%s", var_name, var_val);
+ 		child_set_env(env, envsize, var_name, var_val);
+ 
+@@ -1387,6 +1393,11 @@ do_setup_env(Session *s, const char *shell)
  	}
  #endif /* USE_PAM */
  
-+	if (s->authctxt->auth_details)
++	if (options.expose_auth_methods >= EXPOSE_AUTHMETH_PAMENV &&
++			s->authctxt->auth_details)
 +		child_set_env(&env, &envsize, "SSH_USER_AUTH",
 +		     s->authctxt->auth_details);
 +
  	if (auth_sock_name != NULL)
  		child_set_env(&env, &envsize, SSH_AUTHSOCKET_ENV_NAME,
  		    auth_sock_name);
-@@ -2843,6 +2847,9 @@ do_cleanup(Authctxt *authctxt)
+@@ -2873,6 +2884,9 @@ do_cleanup(Authctxt *authctxt)
  	if (authctxt == NULL)
  		return;
  
@@ -242,11 +457,23 @@ index e2ab34f..2c90943 100644
  #ifdef USE_PAM
  	if (options.use_pam) {
  		sshpam_cleanup();
+diff --git a/ssh-gss.h b/ssh-gss.h
+index 132fd0d..40a72da 100644
+--- a/ssh-gss.h
++++ b/ssh-gss.h
+@@ -160,6 +160,7 @@ int ssh_gssapi_server_check_mech(Gssctxt **,gss_OID, const char *,
+     const char *);
+ OM_uint32 ssh_gssapi_server_ctx(Gssctxt **, gss_OID);
+ int ssh_gssapi_userok(char *name, struct passwd *);
++char* ssh_gssapi_get_displayname(void);
+ OM_uint32 ssh_gssapi_checkmic(Gssctxt *, gss_buffer_t, gss_buffer_t);
+ void ssh_gssapi_do_child(char ***, u_int *);
+ void ssh_gssapi_cleanup_creds(void);
 diff --git a/ssh.1 b/ssh.1
-index f65e42f..60334c2 100644
+index c795c40..14e8dda 100644
 --- a/ssh.1
 +++ b/ssh.1
-@@ -1284,6 +1284,10 @@ server IP address, and server port number.
+@@ -1289,6 +1289,10 @@ server IP address, and server port number.
  This variable contains the original command line if a forced command
  is executed.
  It can be used to extract the original arguments.
@@ -257,3 +484,29 @@ index f65e42f..60334c2 100644
  .It Ev SSH_TTY
  This is set to the name of the tty (path to the device) associated
  with the current shell or command.
+diff --git a/sshd_config.5 b/sshd_config.5
+index bb7e94d..429489a 100644
+--- a/sshd_config.5
++++ b/sshd_config.5
+@@ -461,6 +461,21 @@ is allowed to log in.
+ See PATTERNS in
+ .Xr ssh_config 5
+ for more information on patterns.
++.It Cm ExposeAuthenticationMethods
++When using SSH2, this option controls the exposure of the list of
++successful authentication methods to PAM during the authentication
++and to the shell environment via the
++.Cm SSH_USER_AUTH
++variable. See the description of this variable for more details.
++Valid options are:
++.Dq never
++(Do not expose successful authentication methods),
++.Dq pam-only
++(Only expose them to PAM during authentication, not afterwards),
++.Dq pam-and-env
++(Expose them to PAM and keep them in the shell environment).
++The default is
++.Dq never .
+ .It Cm ForceCommand
+ Forces the execution of the command specified by
+ .Cm ForceCommand ,

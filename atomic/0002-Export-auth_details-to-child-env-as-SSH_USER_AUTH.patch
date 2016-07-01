@@ -1,17 +1,17 @@
-From fe42185a3d016f9628d5275430f431daa29f8037 Mon Sep 17 00:00:00 2001
-From: Vincent Brillault <vincent.brillault@cern.ch>
-Date: Tue, 1 Dec 2015 15:04:18 +0100
-Subject: [PATCH 2/8] Export auth_details to child env as SSH_USER_AUTH
+From 9a1362218ed1d4865918d6030e1ad17d8bd6d71c Mon Sep 17 00:00:00 2001
+From: Vincent Brillault <git@lerya.net>
+Date: Thu, 19 Nov 2015 20:26:26 +0100
+Subject: [PATCH 02/17] Export auth_details to child env as SSH_USER_AUTH
 
 ---
  session.c | 4 ++++
  1 file changed, 4 insertions(+)
 
 diff --git a/session.c b/session.c
-index cf7fbd5..2c90943 100644
+index 2988e29..1c4c86e 100644
 --- a/session.c
 +++ b/session.c
-@@ -1365,6 +1365,10 @@ do_setup_env(Session *s, const char *shell)
+@@ -1387,6 +1387,10 @@ do_setup_env(Session *s, const char *shell)
  	}
  #endif /* USE_PAM */
  
@@ -23,5 +23,5 @@ index cf7fbd5..2c90943 100644
  		child_set_env(&env, &envsize, SSH_AUTHSOCKET_ENV_NAME,
  		    auth_sock_name);
 -- 
-1.8.3.1
+2.9.0
 

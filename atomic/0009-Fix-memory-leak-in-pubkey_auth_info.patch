@@ -1,0 +1,26 @@
+From 0c165134f966d0f11c09388276d4917724f7c533 Mon Sep 17 00:00:00 2001
+From: Vincent Brillault <git@lerya.net>
+Date: Tue, 1 Dec 2015 19:20:33 +0100
+Subject: [PATCH 09/17] Fix memory leak in pubkey_auth_info
+
+Bug introduced by c087cdfe4a7e6cf752a0fff4830eb32b4991b8b3
+---
+ auth2-pubkey.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/auth2-pubkey.c b/auth2-pubkey.c
+index aa5deab..dc31322 100644
+--- a/auth2-pubkey.c
++++ b/auth2-pubkey.c
+@@ -242,7 +242,7 @@ pubkey_auth_info(Authctxt *authctxt, const Key *key, const char *fmt, ...)
+ 	pubkey = pubkey_format(key);
+ 	auth_info(authctxt, "%s%s%s", pubkey, extra == NULL ? "" : ", ",
+ 	    extra == NULL ? "" : extra);
+-
++	free(pubkey);
+ 	free(extra);
+ }
+ 
+-- 
+2.9.0
+

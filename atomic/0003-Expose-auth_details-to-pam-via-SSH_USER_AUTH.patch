@@ -1,7 +1,7 @@
-From 18ec4b7c9831d10f688d4bdfbf72a1535066f07d Mon Sep 17 00:00:00 2001
-From: Vincent Brillault <vincent.brillault@cern.ch>
-Date: Tue, 1 Dec 2015 15:05:33 +0100
-Subject: [PATCH 3/8] Expose auth_details to pam via "SSH_USER_AUTH"
+From ac408ddfd372a518a90884b87dadb537447bba69 Mon Sep 17 00:00:00 2001
+From: Vincent Brillault <git@lerya.net>
+Date: Thu, 19 Nov 2015 20:26:53 +0100
+Subject: [PATCH 03/17] Expose auth_details to pam via "SSH_USER_AUTH"
 
 Whenever the pam device is called, update the "SSH_USER_AUTH" PAM
 environment variable (Doing it outside this module exposes us to a NULL
@@ -32,5 +32,5 @@ index 690711e..fd8bde1 100644
  
  	/* Start the authentication thread */
 -- 
-1.8.3.1
+2.9.0
 

@@ -1,0 +1,26 @@
+From b834a75657a201e6fae6e3f319695101ad5b1f92 Mon Sep 17 00:00:00 2001
+From: Vincent Brillault <vincent.brillault@cern.ch>
+Date: Fri, 1 Jul 2016 09:02:23 +0200
+Subject: [PATCH 16/17] Allow ExposeAuthenticationMethods to be used in 'Match'
+ blocks
+
+---
+ servconf.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/servconf.c b/servconf.c
+index 5ec0808..4512024 100644
+--- a/servconf.c
++++ b/servconf.c
+@@ -519,7 +519,7 @@ static struct {
+ 	{ "authorizedkeyscommanduser", sAuthorizedKeysCommandUser, SSHCFG_ALL },
+ 	{ "versionaddendum", sVersionAddendum, SSHCFG_GLOBAL },
+ 	{ "authenticationmethods", sAuthenticationMethods, SSHCFG_ALL },
+-	{ "exposeauthenticationmethods", sExposeAuthenticationMethods, SSHCFG_GLOBAL },
++	{ "exposeauthenticationmethods", sExposeAuthenticationMethods, SSHCFG_ALL },
+ 	{ NULL, sBadOption, 0 }
+ };
+ 
+-- 
+2.9.0
+

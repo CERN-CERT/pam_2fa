@@ -1,0 +1,46 @@
+From 2abef0a0dc8595bac7073366c961f1e4b300f99f Mon Sep 17 00:00:00 2001
+From: Vincent Brillault <vincent.brillault@cern.ch>
+Date: Tue, 23 Feb 2016 17:39:02 +0100
+Subject: [PATCH 12/17] New function: ssh_gssapi_get_displayname
+
+---
+ gss-serv.c | 10 ++++++++++
+ ssh-gss.h  |  1 +
+ 2 files changed, 11 insertions(+)
+
+diff --git a/gss-serv.c b/gss-serv.c
+index 7d0ffff..94408d9 100644
+--- a/gss-serv.c
++++ b/gss-serv.c
+@@ -471,6 +471,16 @@ ssh_gssapi_userok(char *user, struct passwd *pw)
+ 	return (0);
+ }
+ 
++/* Privileged */
++char*
++ssh_gssapi_get_displayname(void)
++{
++	if (gssapi_client.displayname.length != 0 &&
++	    gssapi_client.displayname.value != NULL)
++		return strdup((char *)gssapi_client.displayname.value);
++	return NULL;
++}
++
+ /* These bits are only used for rekeying. The unpriviledged child is running 
+  * as the user, the monitor is root.
+  *
+diff --git a/ssh-gss.h b/ssh-gss.h
+index 132fd0d..40a72da 100644
+--- a/ssh-gss.h
++++ b/ssh-gss.h
+@@ -160,6 +160,7 @@ int ssh_gssapi_server_check_mech(Gssctxt **,gss_OID, const char *,
+     const char *);
+ OM_uint32 ssh_gssapi_server_ctx(Gssctxt **, gss_OID);
+ int ssh_gssapi_userok(char *name, struct passwd *);
++char* ssh_gssapi_get_displayname(void);
+ OM_uint32 ssh_gssapi_checkmic(Gssctxt *, gss_buffer_t, gss_buffer_t);
+ void ssh_gssapi_do_child(char ***, u_int *);
+ void ssh_gssapi_cleanup_creds(void);
+-- 
+2.9.0
+
