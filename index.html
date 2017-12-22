@@ -125,13 +125,7 @@ PasswordAuthentication no # No basic password authentication
 <h3>
 <a id="exposing-more-information-to-pam" class="anchor" href="#exposing-more-information-to-pam" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Exposing more information to PAM</h3>
 
-<p>In the end we have no choice but to patch OpenSSH to expose more information to PAM, allowing it to make the right decision. The patch is available on the <a href="https://bugzilla.mindrot.org/show_bug.cgi?id=2408">OpenSSH bug tracker</a> and <a href="https://github.com/CERN-CERT/openssh-portable">our Github</a>. We are also hosting it on here one version, ported from the version proposed in the bug tracker, that can be directly applied on RedHat/Centos 7 sources:</p>
-
-<ul>
-<li>A <a href="openssh-6.6.1p1-expose-successful-auth-methods.patch">full version</a>
-</li>
-<li><a href="https://github.com/CERN-CERT/pam_2fa/tree/gh-pages/atomic">Atomic patches</a></li>
-</ul>
+<p>In the end we have no choice but to patch OpenSSH to expose more information to PAM, allowing it to make the right decision. The patch was proposed to the <a href="https://bugzilla.mindrot.org/show_bug.cgi?id=2408">OpenSSH bug tracker</a> and RedHat agreed to include a version of this patch in CentOS 7.3+</p>
 
 <p>This patch adds a new environment variable, SSH_USER_AUTH, which is exposed:</p>
 
@@ -148,16 +142,7 @@ PasswordAuthentication no # No basic password authentication
 <li>The Kerberos principal for Kerberos authentication</li>
 </ul>
 
-<p>We hope that one day these patches will be integrated upstream, but for now, we need to maintain our own compiled version for CERN (links only accessible withing CERN):</p>
-
-<ul>
-<li>
-<a href="http://linuxsoft.cern.ch/internal/repos/sec7-qa/x86_64/os/Packages/">Compiled patched versions of OpenSSH for CERN Centos 7</a> with its <a href="http://linuxsoft.cern.ch/internal/repos/sec7-qa/source/SRPMS/openssh-6.6.1p1-22.el7.centos.src.rpm">sources</a>
-</li>
-<li>
-<a href="http://koji.cern.ch/koji/taskinfo?taskID=433853">Compiled patched versions of OpenSSH for Scientific Linux CERN 6</a> with its <a href="https://koji.cern.ch/kojifiles/work/tasks/3854/433854/openssh-6.6.1p1-22.el6.src.rpm">sources</a>
-</li>
-</ul>
+<p>Our patch has been adapted by upstream and a modified version is already included since 7.6. Unfortunately this patch is missing a key functionality and thus currently does not work for us.</p>
 
 <h3>
 <a id="using-a-smart-pam-configuration" class="anchor" href="#using-a-smart-pam-configuration" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Using a smart PAM configuration</h3>
@@ -170,7 +155,7 @@ Using this variable is safe as it is only controlled by:</p>
 <li>pam modules themselves during a single call, as they can modify the environment</li>
 </ul>
 
-<p>As we are using the simplified version of the patch, let's start with a simple check: the existence of a non-empty SSH_USER_AUTH variable in the PAM environment. A straightforward version of such a module is available on our <a href="https://github.com/CERN-CERT/pam_2fa/blob/master/pam_ssh_user_auth.c">GitHub</a>. This module will basically return two values: <em>PAM_SUCCESS</em> if there was any previously successful authentications and <em>PAM_IGNORE</em> if there was none. Based on this, we can write the following PAM configuration:</p>
+<p>Let's start with a simple check: the existence of a non-empty SSH_USER_AUTH variable in the PAM environment. A straightforward version of such a module is available on our <a href="https://github.com/CERN-CERT/pam_2fa/blob/master/pam_ssh_user_auth.c">GitHub</a>. This module will basically return two values: <em>PAM_SUCCESS</em> if there was any previously successful authentications and <em>PAM_IGNORE</em> if there was none. Based on this, we can write the following PAM configuration:</p>
 
 <pre><code>auth       [success=1 ignore=ignore default=die] pam_ssh_user_auth.so
 auth       substack     password-auth
@@ -240,6 +225,7 @@ PasswordAuthentication no # No basic password authentication
 </li>
 <li>Damien Miller for his <a href="http://marc.info/?l=openssh-unix-dev&amp;m=143328980804529&amp;w=2">name and format suggestions</a>
 </li>
+<li>Radoslaw Ejsmont for <a href="https://bugzilla.mindrot.org/show_bug.cgi?id=2408#c16">following-up upstream modification and identifying the incompatibilities</a>
 </ul>
 
       <footer class="site-footer">
