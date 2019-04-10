@@ -10,15 +10,18 @@ const char * get_ssh_user_auth(pam_handle_t * pamh, int debug)
 {
 	const char * ssh_user_auth;
 
-	ssh_user_auth = pam_getenv(pamh, "SSH_USER_AUTH");
+	ssh_user_auth = pam_getenv(pamh, "SSH_AUTH_INFO_0");
 	if (ssh_user_auth == NULL) {
-		if (debug)
-			D("no SSH_USER_AUTH");
-		return NULL;
+		ssh_user_auth = pam_getenv(pamh, "SSH_USER_AUTH");
+		if (ssh_user_auth == NULL) {
+			if (debug)
+				D("no SSH_AUTH_INFO_0 or SSH_USER_AUTH");
+			return NULL;
+		}
 	}
 	if (strlen(ssh_user_auth) == 0) {
 		if (debug)
-			D("empty SSH_USER_AUTH");
+			D("empty SSH_AUTH_INFO_0 or SSH_USER_AUTH");
 		return NULL;
 	}
 	return ssh_user_auth;
@@ -50,7 +53,7 @@ char * extract_details(pam_handle_t * pamh, int debug, const char * method)
 	if (tok != NULL) {
 		tok += method_len;
 		if (*tok != ':' || *(tok + 1) != ' ') {
-			D("empty details in SSH_USER_AUTH");
+			D("empty details in SSH_AUTH_INFO_0 or SSH_USER_AUTH");
 		} else {
 			details = strdup(tok + 2);
 		}
