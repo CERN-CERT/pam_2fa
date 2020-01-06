@@ -18,12 +18,29 @@ const auth_mod yk_auth = {
     .otp_len = YK_OTP_LEN,
 };
 
+static int valid_otp(module_config * cfg, const char *otp)
+{
+    unsigned int i = 0;
+
+    for (i = 0; otp[i]; ++i) {
+        if (!isalpha(otp[i])) {
+            DBG(("INCORRRECT code from user!"))
+            return 0;
+        }
+    }
+    if (i != YK_OTP_LEN) {
+        DBG(("INCORRRECT code from user!"))
+        return 0;
+    }
+
+    return 1;
+}
+
 int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp) {
     ykclient_t *ykc = NULL;
     int retval = 0;
 
-    if (otp == NULL) {
-        DBG(("Module error: auth  called without an otp"));
+    if (!valid_otp(cfg, otp)) {
         return PAM_AUTH_ERR;
     }
 
@@ -56,14 +73,6 @@ int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cf
 
     DBG(("Yubikey = %s", otp));
     pam_syslog(pamh, LOG_DEBUG, "Yubikey OTP: %s (%zu)", otp, strlen(otp));
-
-    // VERIFY IF VALID INPUT !
-    if (strlen(otp) != YK_OTP_LEN) {
-        DBG(("INCORRRECT code from user!"));
-        pam_syslog(pamh, LOG_INFO, "Yubikey OTP is incorrect: %s", otp);
-        ykclient_done(&ykc);
-        return PAM_AUTH_ERR;
-    }
 
     int keyNotFound = 1;
     if (user_cfg->yk_publicids) {

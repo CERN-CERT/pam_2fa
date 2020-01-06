@@ -55,6 +55,24 @@ int check_curl_ret(int retval, char* curl_error, pam_handle_t * pamh, module_con
     return 0;
 }
 
+static int valid_otp(module_config * cfg, const char *otp)
+{
+    unsigned int i = 0;
+
+    for (i = 0; otp[i]; ++i) {
+        if (!isdigit(otp[i])) {
+            DBG(("INCORRRECT code from user!"))
+            return 0;
+        }
+    }
+    if (i != GAUTH_OTP_LEN) {
+        DBG(("INCORRRECT code from user!"))
+        return 0;
+    }
+
+    return 1;
+}
+
 int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp)
 {
     CURL *curlh = NULL;
@@ -65,8 +83,7 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
     int retval = 0;
     struct curl_slist *header_list = NULL;
 
-    if (otp == NULL) {
-        DBG(("Module error: auth  called without an otp"));
+    if (!valid_otp(cfg, otp)) {
         return PAM_AUTH_ERR;
     }
 
@@ -118,20 +135,6 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
 
     DBG(("OTP = %s", otp));
 
-    // VERIFY IF VALID INPUT !
-    int isValid = 1;
-    unsigned int i = 0;
-    for (i = 0; isValid && otp[i]; ++i) {
-        if (!isdigit(otp[i])) {
-            isValid = 0;
-            break;
-        }
-    }
-    if (!isValid || otp[i]) {
-        DBG(("INCORRRECT code from user!"));
-        cleanup(curlh, header_list);
-        return PAM_AUTH_ERR;
-    }
 
     // build and perform HTTP Request
     snprintf(http_request, HTTP_BUF_LEN, SOAP_REQUEST_TEMPL, user_cfg->gauth_login, otp);
