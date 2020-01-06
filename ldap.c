@@ -81,18 +81,6 @@ int ldap_search_factors(pam_handle_t *pamh, const module_config * cfg, const cha
 		} else {
 		    DBG(("WARNING: invalid gauth login in LDAP (too long): %s", v + cfg->gauth_prefix_len));
 		}
-	    } else if (!strncmp (v, cfg->sms_prefix, cfg->sms_prefix_len)) {
-		if (strlen(v + cfg->sms_prefix_len) <= SMS_MOBILE_LEN) {
-                    if (v[cfg->sms_prefix_len] == '+') {
-			snprintf(user_cfg->sms_mobile, SMS_MOBILE_LEN+1, "00%s", v + cfg->sms_prefix_len + 1);
-		    } else {
-			strncpy(user_cfg->sms_mobile, v + cfg->sms_prefix_len, SMS_MOBILE_LEN + 1);
-                        user_cfg->sms_mobile[SMS_MOBILE_LEN] = 0;
-                    }
-		    retval = OK;
-		} else {
-		    DBG(("WARNING: invalid mobile number in LDAP (too long): %s", v + cfg->sms_prefix_len));
-		}
 	    } else if (!strncmp(v, cfg->yk_prefix, cfg->yk_prefix_len)) {
 		if (strlen(v + cfg->yk_prefix_len) == YK_PUBLICID_LEN) {
                     retval = yk_get_publicid(pamh, v + cfg->yk_prefix_len, &yk_id_pos, &yk_id_len, &user_cfg->yk_publicids);

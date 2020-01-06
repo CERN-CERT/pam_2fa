@@ -81,7 +81,6 @@ user_config *get_user_config(pam_handle_t * pamh,
 #ifdef HAVE_YKCLIENT
         yk_load_user_file(pamh, cfg, user_entry, &user_cfg->yk_publicids);
 #endif
-        sms_load_user_file(pamh, cfg, user_entry, user_cfg);
         pam_2fa_regain_priv(pamh, &p, user_entry);
     }
 

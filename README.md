@@ -4,7 +4,6 @@ The PAM 2FA module provides a second factor authentication, which can be combine
  - What you know: user account password ( standard PAM modules )
  - What you have (pick one of): (PAM 2FA)
   * A Google Authenticator Application on your phone
-  * A Phone Number capable of receiving SMS
   * A Yubikey
 
 ## Requirement(s)
@@ -65,10 +64,6 @@ UsePAM yes
 | gauth_prefix    | Optional   | Specifiy the prefix used to distinguish Google Authenticator mapping in LDAP | "GAuth:" |
 | gauth_ws_uri    | Mandatory for Google Authenticator support | Specify the Google Authenticator Web Service URI | |
 | gauth_ws_action | Optional   | Specify the Google Authenticator Web Service function name to check users' OTP | "CheckUser" |
-| sms_prefix      | Optional   | Specify the prefix used to distinguish SMSOTP mapping in LDAP | "SMS:" |
-| sms_gateway     | Mandatory for SMS OTP support | Specify the SMS gateway to which emails should be sent in order to send SMS to users | |
-| sms_subject     | Optional   | Speficy the Subject field for SMS. | "" |
-| sms_text        | Optional   | Specify the body and content of the message you are sending. | "Your code for authentication code is: " |
 | yk_prefix       | Optional   | Specifiy the prefix used to distinguish Yubikey mapping in LDAP | "YubiKey:" |
 | yk_uri          | Optional   | Specify the Yubikey server URI (if you have your internal server) | Use Yubico server pool |
 | yk_id           | Mandatory for Yubikey support | Specify the client ID (see ykclient doc) | |

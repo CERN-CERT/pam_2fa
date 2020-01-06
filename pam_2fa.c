@@ -65,10 +65,6 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 	DBG(("GAuth configured, but CURL not compiled (should never happen!)"));
 #endif
     }
-    if (cfg->sms_enabled && user_cfg->sms_mobile[0] != '\0') {
-	++menu_len;
-	available_mods[menu_len] = &sms_auth;
-    }
     if (cfg->yk_enabled && user_cfg->yk_publicids) {
 #ifdef HAVE_YKCLIENT
 	++menu_len;

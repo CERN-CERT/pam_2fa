@@ -30,7 +30,6 @@ typedef struct {
     int debug;
     unsigned int retry;
     char *capath;
-    size_t sms_otp_length;
     int ldap_enabled;
     char *ldap_uri;
     char *ldap_basedn;
@@ -40,13 +39,6 @@ typedef struct {
     size_t gauth_prefix_len;
     char *gauth_ws_uri;
     char *gauth_ws_action;
-    int sms_enabled;
-    char *sms_prefix;
-    size_t sms_prefix_len;
-    char *sms_user_file;
-    char *sms_gateway;
-    char *sms_subject;
-    char *sms_text;
     char *smtp_server;
     int yk_enabled;
     char *yk_prefix;
@@ -60,14 +52,12 @@ typedef struct {
 
 
 #define GAUTH_LOGIN_LEN 31
-#define SMS_MOBILE_LEN  15
 #define YK_PUBLICID_LEN 12
 
 typedef struct {
     const char *username;
     _Bool username_allocated;
     char gauth_login[GAUTH_LOGIN_LEN + 1];
-    char sms_mobile[SMS_MOBILE_LEN + 1];
     char **yk_publicids;
 } user_config;
 
@@ -97,10 +87,7 @@ typedef struct {
 #define ROOT_USER "root"
 
 #define YK_DEFAULT_USER_FILE ".ssh/trusted_yubikeys"
-#define SMS_DEFAULT_USER_FILE ".ssh/trusted_sms"
 #define MAX_RETRY 1
-
-#define SMS_OTP_LEN 6
 
 #define GAUTH_OTP_LEN 6
 #define GAUTH_DEFAULT_ACTION "CheckUser"
@@ -109,7 +96,6 @@ typedef struct {
 #define YK_IDS_DEFAULT_SIZE 8
 
 #define GAUTH_PREFIX "GAuth:"
-#define SMS_PREFIX   "SMS:"
 #define YK_PREFIX    "YubiKey:"
 
 #define ERROR_BINDING_LDAP_SERVER -100
@@ -123,10 +109,6 @@ typedef struct {
 #define CONFIG_ERROR -2666
 #define SEARCH_ERR -3663
 #define SEARCH_SUCCESS 6655
-
-#define SMS_TEXT_WAIT "Please be patient, you will receive shortly a SMS with your authentication code."
-#define SMS_SUBJECT ""
-#define SMS_TEXT "Your authentication code is: "
 
 int parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **ncfg);
 void free_config(module_config *cfg);
@@ -152,9 +134,5 @@ void yk_free_publicids(char **publicids);
 
 extern const auth_mod yk_auth;
 #endif
-
-void sms_load_user_file(pam_handle_t *pamh, const module_config *cfg, struct passwd *user_entry, user_config *user_cfg);
-
-extern const auth_mod sms_auth;
 
 #endif /* HEADER_PAM_2FA_H */
