@@ -69,11 +69,9 @@ struct pam_2fa_privs {
     int nbgrps;
 };
 
-typedef void* (*pre_auth_func) (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg);
-typedef int (*auth_func) (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp, void* pre_auth_data);
+typedef int (*auth_func) (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp);
 
 typedef struct {
-    pre_auth_func pre_auth;
     auth_func do_auth;
     const char * name;
     size_t otp_len;

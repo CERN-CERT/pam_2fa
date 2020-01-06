@@ -9,17 +9,16 @@
 
 #include "pam_2fa.h"
 
-int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp, void * data);
+int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp);
 
 const auth_mod yk_auth = {
-    .pre_auth = NULL,
     .do_auth = &yk_auth_func,
     .name = "Yubikey",
     .prompt = "Yubikey: ",
     .otp_len = YK_OTP_LEN,
 };
 
-int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp, void * data) {
+int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp) {
     ykclient_t *ykc = NULL;
     int retval = 0;
 
