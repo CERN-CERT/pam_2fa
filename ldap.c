@@ -73,15 +73,7 @@ int ldap_search_factors(pam_handle_t *pamh, const module_config * cfg, const cha
 
 	for (val = vals; *val; ++val) {
             char *v = (*val)->bv_val;
-	    if (!strncmp (v, cfg->gauth_prefix, cfg->gauth_prefix_len)) {
-		if (strlen(v + cfg->gauth_prefix_len) <= GAUTH_LOGIN_LEN) {
-		    strncpy(user_cfg->gauth_login, v + cfg->gauth_prefix_len, GAUTH_LOGIN_LEN + 1);
-                    user_cfg->gauth_login[GAUTH_LOGIN_LEN] = 0;
-		    retval = OK;
-		} else {
-		    DBG(("WARNING: invalid gauth login in LDAP (too long): %s", v + cfg->gauth_prefix_len));
-		}
-	    } else if (!strncmp(v, cfg->yk_prefix, cfg->yk_prefix_len)) {
+	    if (!strncmp(v, cfg->yk_prefix, cfg->yk_prefix_len)) {
 		if (strlen(v + cfg->yk_prefix_len) == YK_PUBLICID_LEN) {
                     retval = yk_get_publicid(pamh, v + cfg->yk_prefix_len, &yk_id_pos, &yk_id_len, &user_cfg->yk_publicids);
                     if(retval != OK) {

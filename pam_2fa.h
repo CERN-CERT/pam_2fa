@@ -57,7 +57,6 @@ typedef struct {
 typedef struct {
     const char *username;
     _Bool username_allocated;
-    char gauth_login[GAUTH_LOGIN_LEN + 1];
     char **yk_publicids;
 } user_config;
 

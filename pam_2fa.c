@@ -49,7 +49,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     const auth_mod *available_mods[4] = { NULL, NULL, NULL, NULL };
     int menu_len = 0;
 
-    if (cfg->gauth_enabled && user_cfg->gauth_login[0] != '\0') {
+    if (cfg->gauth_enabled) {
         ++menu_len;
         available_mods[menu_len] = &gauth_auth;
     }

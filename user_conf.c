@@ -70,11 +70,6 @@ user_config *get_user_config(pam_handle_t * pamh,
             return NULL;
         }
 
-        if(cfg->gauth_enabled && non_root) {
-            strncpy(user_cfg->gauth_login, user_cfg->username, GAUTH_LOGIN_LEN + 1);
-            user_cfg->gauth_login[GAUTH_LOGIN_LEN] = 0;
-        }
-
         pam_2fa_drop_priv(pamh, &p, user_entry);
 #ifdef HAVE_YKCLIENT
         yk_load_user_file(pamh, cfg, user_entry, &user_cfg->yk_publicids);
