@@ -112,28 +112,16 @@ AC_ARG_WITH(
   [with_curl=yes]
 )
 
-LIBCURL_LIBS=
-LIBCURL_CFLAGS=
-HAVE_CURL=0
-AS_IF(
-  [test "x$with_curl" != xno],
-  [PKG_CHECK_MODULES(
-    LIBCURL,
-    libcurl,
-    [
-      AC_SUBST([LIBCURL_CFLAGS])
-      AC_SUBST([LIBCURL_LIBS])
-      AM_CONDITIONAL([USE_CURL], true)
-      HAVE_CURL=1
-      AC_DEFINE([HAVE_CURL], [1], [Define if you have curl])
-    ],
-    [
-      AC_MSG_WARN([libcurl not found, will not be compiled (--without-curl to disable curl support)])
-      AM_CONDITIONAL([USE_CURL], false)
-    ],
-    []
-  )],
-  AM_CONDITIONAL([USE_CURL], false)
+PKG_CHECK_MODULES(
+  LIBCURL,
+  libcurl,
+  [
+    AC_SUBST([LIBCURL_CFLAGS])
+    AC_SUBST([LIBCURL_LIBS])
+  ],
+  [
+    AC_MSG_ERROR([libcurl not found, please install curl-dev])
+  ]
 )
 
 # ykclient (no pkg-config found)
@@ -178,6 +166,6 @@ AC_MSG_NOTICE([Summary of build options:
   Host type:          ${host}
   Compiler:           ${CC}
   Library types:      Shared=${enable_shared}, Static=${enable_static}
-  Dependencies:       LDAP=${HAVE_LDAP}, CURL=${HAVE_CURL}, YKCLIENT=${HAVE_YKCLIENT}
+  Dependencies:       LDAP=${HAVE_LDAP}, YKCLIENT=${HAVE_YKCLIENT}
 ])
 

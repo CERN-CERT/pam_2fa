@@ -4,14 +4,6 @@
 
 #include "pam_2fa.h"
 
-#ifdef HAVE_CURL
-#include <curl/curl.h>
-
-// Initialize curl when loading the shared library
-void __module_load(void)   __attribute__((constructor));
-void __module_unload(void) __attribute__((destructor));
-#endif
-
 PAM_EXTERN int pam_sm_setcred(pam_handle_t * pamh, int flags, int argc,
 			      const char **argv)
 {
@@ -58,12 +50,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     int menu_len = 0;
 
     if (cfg->gauth_enabled && user_cfg->gauth_login[0] != '\0') {
-#ifdef HAVE_CURL
-	++menu_len;
-	available_mods[menu_len] = &gauth_auth;
-#else
-	DBG(("GAuth configured, but CURL not compiled (should never happen!)"));
-#endif
+        ++menu_len;
+        available_mods[menu_len] = &gauth_auth;
     }
     if (cfg->yk_enabled && user_cfg->yk_publicids) {
 #ifdef HAVE_YKCLIENT
@@ -141,16 +129,3 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     free_config(cfg);
     return retval;
 }
-
-#ifdef HAVE_CURL
-// Initialize curl when loading the shared library
-void __module_load(void)
-{
-    curl_global_init(CURL_GLOBAL_ALL);
-}
-
-void __module_unload(void)
-{
-    curl_global_cleanup();
-}
-#endif

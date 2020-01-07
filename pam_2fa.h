@@ -121,9 +121,7 @@ int pam_2fa_regain_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struc
 int ldap_search_factors(pam_handle_t *pamh, const module_config * cfg, const char *username, user_config *user_cfg);
 #endif
 
-#ifdef HAVE_CURL
 extern const auth_mod gauth_auth;
-#endif
 
 #ifdef HAVE_YKCLIENT
 int yk_load_user_file(pam_handle_t *pamh, const module_config *cfg, struct passwd *user_entry, char ***user_publicids);

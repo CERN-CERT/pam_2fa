@@ -165,11 +165,9 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "ldap_attr=", &cfg->ldap_attr);
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "ldap_basedn=", &cfg->ldap_basedn);
 #endif
-#ifdef HAVE_CURL
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "gauth_prefix=", &cfg->gauth_prefix);
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "gauth_ws_uri=", &cfg->gauth_ws_uri);
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "gauth_ws_action=", &cfg->gauth_ws_action);
-#endif
 #ifdef HAVE_YKCLIENT
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "yk_prefix=", &cfg->yk_prefix);
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "yk_uri=", &cfg->yk_uri);
