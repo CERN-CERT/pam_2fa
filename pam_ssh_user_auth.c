@@ -20,14 +20,14 @@
 #include "ssh_user_auth.h"
 
 PAM_EXTERN int pam_sm_setcred(pam_handle_t * pamh, int flags, int argc,
-			      const char **argv)
+                              const char **argv)
 {
     return PAM_SUCCESS;
 }
 
 // CALLED BY PAM_AUTHENTICATE
 PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
-				   int argc, const char **argv)
+                                   int argc, const char **argv)
 {
     int i, debug;
     const char * ssh_user_auth;

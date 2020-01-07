@@ -46,28 +46,28 @@ int yk_auth_func(pam_handle_t * pamh, user_config * user_cfg, module_config * cf
 
     retval = ykclient_init(&ykc);
     if (retval != YKCLIENT_OK) {
-	DBG(("ykclient_init() failed (%d): %s", retval,
-	     ykclient_strerror(retval)));
-	return PAM_AUTH_ERR;
+        DBG(("ykclient_init() failed (%d): %s", retval,
+             ykclient_strerror(retval)));
+        return PAM_AUTH_ERR;
     }
 
     retval = ykclient_set_client_hex(ykc, cfg->yk_id, cfg->yk_key);
     if (retval != YKCLIENT_OK) {
-	DBG(("ykclient_set_client_b64() failed (%d): %s", retval,
-	     ykclient_strerror(retval)));
+        DBG(("ykclient_set_client_b64() failed (%d): %s", retval,
+             ykclient_strerror(retval)));
         // cleanup
         ykclient_done(&ykc);
-	return PAM_AUTH_ERR;
+        return PAM_AUTH_ERR;
     }
 
     if (cfg->yk_key)
-	ykclient_set_verify_signature(ykc, 1);
+        ykclient_set_verify_signature(ykc, 1);
 
     if (cfg->capath)
-	ykclient_set_ca_path(ykc, cfg->capath);
+        ykclient_set_ca_path(ykc, cfg->capath);
 
     if (cfg->yk_uri)
-	ykclient_set_url_template(ykc, cfg->yk_uri);
+        ykclient_set_url_template(ykc, cfg->yk_uri);
 
     retval = PAM_AUTH_ERR;
 
