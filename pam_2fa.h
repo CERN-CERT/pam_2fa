@@ -37,8 +37,8 @@ typedef struct {
     int gauth_enabled;
     char *gauth_prefix;
     size_t gauth_prefix_len;
-    char *gauth_ws_uri;
-    char *gauth_ws_action;
+    char *gauth_uri_prefix;
+    char *gauth_uri_suffix;
     char *smtp_server;
     int yk_enabled;
     char *yk_prefix;

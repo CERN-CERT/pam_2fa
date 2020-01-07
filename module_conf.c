@@ -33,8 +33,8 @@ free_config(module_config *cfg)
         free_and_reset_str(&cfg->ldap_basedn);
         free_and_reset_str(&cfg->ldap_attr);
         free_and_reset_str(&cfg->gauth_prefix);
-        free_and_reset_str(&cfg->gauth_ws_uri);
-        free_and_reset_str(&cfg->gauth_ws_action);
+        free_and_reset_str(&cfg->gauth_uri_prefix);
+        free_and_reset_str(&cfg->gauth_uri_suffix);
         free_and_reset_str(&cfg->yk_prefix);
         free_and_reset_str(&cfg->yk_uri);
         free_and_reset_str(&cfg->yk_key);
@@ -166,8 +166,8 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "ldap_basedn=", &cfg->ldap_basedn);
 #endif
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "gauth_prefix=", &cfg->gauth_prefix);
-        if (retval == 0) retval = parse_str_option(pamh, argv[i], "gauth_ws_uri=", &cfg->gauth_ws_uri);
-        if (retval == 0) retval = parse_str_option(pamh, argv[i], "gauth_ws_action=", &cfg->gauth_ws_action);
+        if (retval == 0) retval = parse_str_option(pamh, argv[i], "gauth_uri_prefix=", &cfg->gauth_uri_prefix);
+        if (retval == 0) retval = parse_str_option(pamh, argv[i], "gauth_uri_suffix=", &cfg->gauth_uri_suffix);
 #ifdef HAVE_YKCLIENT
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "yk_prefix=", &cfg->yk_prefix);
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "yk_uri=", &cfg->yk_uri);
@@ -190,8 +190,6 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
     //DEFAULT VALUES
     if (!cfg->retry &&  !mem_error)
         cfg->retry = MAX_RETRY;
-    if (!cfg->gauth_ws_action &&  !mem_error)
-        mem_error = strdup_or_die(&cfg->gauth_ws_action, GAUTH_DEFAULT_ACTION);
     if (!cfg->gauth_prefix &&  !mem_error)
         mem_error = strdup_or_die(&cfg->gauth_prefix, GAUTH_PREFIX);
     if (!cfg->yk_prefix &&  !mem_error)
@@ -216,7 +214,7 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
         cfg->ldap_enabled = 1;
 #endif /* HAVE_LDAP */
 
-    if (cfg->gauth_ws_uri && cfg->gauth_ws_action)
+    if (cfg->gauth_uri_prefix && cfg->gauth_uri_suffix)
         cfg->gauth_enabled = 1;
 
     if (cfg->yk_id)
@@ -234,8 +232,8 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
 #endif /* HAVE_LDAP */
     DBG(("gauth_enabled => %s",   cfg->gauth_enabled));
     DBG(("gauth_prefix => %s",    cfg->gauth_prefix));
-    DBG(("gauth_ws_uri => %s",    cfg->gauth_ws_uri));
-    DBG(("gauth_ws_action => %s", cfg->gauth_ws_action));
+    DBG(("gauth_uri_prefix => %s",cfg->gauth_uri_prefix));
+    DBG(("gauth_uri_suffix => %s",cfg->gauth_uri_suffix));
     DBG(("yk_enabled => %s",      cfg->yk_enabled));
     DBG(("yk_prefix => %s",       cfg->yk_prefix));
     DBG(("yk_uri => %s",          cfg->yk_uri));
