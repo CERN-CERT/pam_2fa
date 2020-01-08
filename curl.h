@@ -18,12 +18,10 @@ int pam_curl_add_header(struct pam_curl_state * state, const char * header);
 int pam_curl_set_headers(struct pam_curl_state * state);
 CURLcode pam_curl_perform(struct pam_curl_state * state);
 
-#define PAM_CURL_DO_OR_RET(state, action, errorval, ...) \
+#define PAM_CURL_DO_OR_GOTO(state, action, endpoint, ...) \
    do { \
-       int tmp = pam_curl_##action(state, __VA_ARGS__); \
-       if (!tmp) { \
-           pam_curl_cleanup(state); \
-           return errorval; \
+       if (!pam_curl_##action(state, __VA_ARGS__)) { \
+           goto endpoint; \
        } \
    } while (0)
 #endif /* HEADER_PAM_2FA_CURL_H */

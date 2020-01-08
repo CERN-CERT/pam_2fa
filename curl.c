@@ -61,10 +61,12 @@ struct pam_curl_state* pam_curl_init(pam_handle_t * pamh, module_config * cfg)
     }
 
     if (cfg->capath) {
-        PAM_CURL_DO_OR_RET(state, set_option, NULL, CURLOPT_CAPATH, cfg->capath);
+        PAM_CURL_DO_OR_GOTO(state, set_option, fail, CURLOPT_CAPATH, cfg->capath);
     }
 
     return state;
+fail:
+    return NULL;
 }
 
 int pam_curl_set_option(struct pam_curl_state * state, CURLoption option, ...)
@@ -107,12 +109,7 @@ CURLcode pam_curl_perform(struct pam_curl_state * state) {
     CURLcode retval;
 
     if (state->header_list) {
-        retval = curl_easy_setopt(state->curlh, CURLOPT_HTTPHEADER, state->header_list);
-        if (retval != CURLE_OK) {
-            PAM_CURL_DBG(("Unable to set CURL headers: %u",  retval))
-            pam_syslog(state->pamh, LOG_ERR, "Unable to set CURL headers: %s", state->curl_error);
-            return retval;
-        }
+        PAM_CURL_DO_OR_GOTO(state, set_option, fail, CURLOPT_HTTPHEADER, state->header_list);
     }
 
     retval = curl_easy_perform(state->curlh);
@@ -120,6 +117,7 @@ CURLcode pam_curl_perform(struct pam_curl_state * state) {
         PAM_CURL_DBG(("Unable to perform CURL request: %u", retval))
         pam_syslog(state->pamh, LOG_ERR, "Unable to perform CURL request: %s", state->curl_error);
     }
-
     return retval;
+fail:
+    return CURLE_AUTH_ERROR;
 }

@@ -45,7 +45,7 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
     struct pam_curl_state* state;
     void * ignore_data;
     char * uri;
-    int uri_len;
+    int return_value = PAM_AUTH_ERR;
 
     if (!valid_otp(cfg, otp)) {
         return PAM_AUTH_ERR;
@@ -56,28 +56,26 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
         return PAM_AUTH_ERR;
     }
 
-    PAM_CURL_DO_OR_RET(state, add_header, PAM_AUTH_ERR, "Content-Type: text/plain");
+    PAM_CURL_DO_OR_GOTO(state, add_header, clean, "Content-Type: text/plain");
+    PAM_CURL_DO_OR_GOTO(state, set_option, clean, CURLOPT_FAILONERROR, 1);
+    PAM_CURL_DO_OR_GOTO(state, set_option, clean, CURLOPT_WRITEFUNCTION, &ignore_curl_data);
+    PAM_CURL_DO_OR_GOTO(state, set_option, clean, CURLOPT_WRITEDATA, &ignore_data);
 
-    PAM_CURL_DO_OR_RET(state, set_option, PAM_AUTH_ERR, CURLOPT_FAILONERROR, 1);
-    PAM_CURL_DO_OR_RET(state, set_option, PAM_AUTH_ERR, CURLOPT_WRITEFUNCTION, &ignore_curl_data);
-    PAM_CURL_DO_OR_RET(state, set_option, PAM_AUTH_ERR, CURLOPT_WRITEDATA, &ignore_data);
-
-    uri_len = asprintf(&uri, "%s/%s/%s", cfg->gauth_uri_prefix, user_cfg->username, cfg->gauth_uri_suffix);
-    if (uri_len < 0) {
-        pam_curl_cleanup(state);
-        return PAM_AUTH_ERR;
+    if (asprintf(&uri, "%s/%s/%s", cfg->gauth_uri_prefix, user_cfg->username, cfg->gauth_uri_suffix) < 0) {
+        goto clean;
     }
-    PAM_CURL_DO_OR_RET(state, set_option, PAM_AUTH_ERR, CURLOPT_URL, uri);
-    free(uri);
-    PAM_CURL_DO_OR_RET(state, set_option, PAM_AUTH_ERR, CURLOPT_POSTFIELDS, otp);
+    PAM_CURL_DO_OR_GOTO(state, set_option, clean_uri, CURLOPT_URL, uri);
+    PAM_CURL_DO_OR_GOTO(state, set_option, clean_uri, CURLOPT_POSTFIELDS, otp);
 
     CURLcode perform_retval = pam_curl_perform(state);
-    pam_curl_cleanup(state);
     if (perform_retval == CURLE_OK) {
-        return PAM_SUCCESS;
-    }
-    if (perform_retval == CURLE_HTTP_RETURNED_ERROR) {
+        return_value = PAM_SUCCESS;
+    } else if (perform_retval == CURLE_HTTP_RETURNED_ERROR) {
         DBG(("Invalid OTP"))
     }
-    return PAM_AUTH_ERR;
+clean_uri:
+    free(uri);
+clean:
+    pam_curl_cleanup(state);
+    return return_value;
 }
