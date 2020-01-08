@@ -121,3 +121,28 @@ CURLcode pam_curl_perform(struct pam_curl_state * state) {
 fail:
     return CURLE_AUTH_ERROR;
 }
+
+/**
+ * Process all the data given by curl by simply ignoring it
+ */
+size_t curl_callback_ignore (char *ptr, size_t size, size_t nmemb, void *userdata)
+{
+    return size * nmemb;
+}
+
+size_t curl_callback_copy (char *ptr, size_t size, size_t nmemb, void *userdata)
+{
+    struct curl_response *response = (struct curl_response *) userdata;
+    size_t handled = size * nmemb;
+    size_t remaining = HTTP_BUF_LEN - response->size - 1;
+
+    if (size * nmemb > remaining) {
+        return 0;
+    }
+
+    memcpy(response->buffer + response->size, ptr, handled);
+    response->size += handled;
+    response->buffer[response->size] = '\0';
+
+    return handled;
+}

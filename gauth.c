@@ -5,7 +5,7 @@
 #include "pam_2fa.h"
 #include "curl.h"
 
-int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp);
+int gauth_auth_func (pam_handle_t * pamh, module_config * cfg, const char* username, const char *otp);
 
 const auth_mod gauth_auth = {
     .do_auth = &gauth_auth_func,
@@ -13,14 +13,6 @@ const auth_mod gauth_auth = {
     .prompt = "OTP: ",
     .otp_len = GAUTH_OTP_LEN,
 };
-
-/**
- * Process all the data given by curl by simply ignoring it
- */
-static size_t ignore_curl_data (char *ptr, size_t size, size_t nmemb, void *userdata)
-{
-    return size * nmemb;
-}
 
 static int valid_otp(module_config * cfg, const char *otp)
 {
@@ -40,7 +32,7 @@ static int valid_otp(module_config * cfg, const char *otp)
     return 1;
 }
 
-int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp)
+int gauth_auth_func (pam_handle_t * pamh, module_config * cfg, const char* username, const char *otp)
 {
     struct pam_curl_state* state;
     void * ignore_data;
@@ -58,10 +50,10 @@ int gauth_auth_func (pam_handle_t * pamh, user_config * user_cfg, module_config 
 
     PAM_CURL_DO_OR_GOTO(state, add_header, clean, "Content-Type: text/plain");
     PAM_CURL_DO_OR_GOTO(state, set_option, clean, CURLOPT_FAILONERROR, 1);
-    PAM_CURL_DO_OR_GOTO(state, set_option, clean, CURLOPT_WRITEFUNCTION, &ignore_curl_data);
+    PAM_CURL_DO_OR_GOTO(state, set_option, clean, CURLOPT_WRITEFUNCTION, &curl_callback_ignore);
     PAM_CURL_DO_OR_GOTO(state, set_option, clean, CURLOPT_WRITEDATA, &ignore_data);
 
-    if (asprintf(&uri, "%s/%s/%s", cfg->gauth_uri_prefix, user_cfg->username, cfg->gauth_uri_suffix) < 0) {
+    if (asprintf(&uri, "%s/%s/%s", cfg->gauth_uri_prefix, username, cfg->gauth_uri_suffix) < 0) {
         goto clean;
     }
     PAM_CURL_DO_OR_GOTO(state, set_option, clean_uri, CURLOPT_URL, uri);

@@ -73,37 +73,6 @@ AC_ARG_WITH(
 )
 AC_MSG_NOTICE([PAM installation path $PAMDIR])
 
-# ldap (no pkg-config found)
-AC_ARG_WITH(
-  [ldap],
-  AS_HELP_STRING([--without-ldap], [disable support for ldap]),
-  [],
-  [with_ldap=yes]
-)
-
-LIBLDAP_LIBS=
-LIBLDAP_CFLAGS=
-HAVE_LDAP=0
-AS_IF(
-  [test "x$with_ldap" != xno],
-  AC_CHECK_LIB(
-    [ldap],
-    [ldap_init],
-    [
-      AC_SUBST([LIBLDAP_LIBS], ["-lldap -llber"])
-      AM_CONDITIONAL([USE_LDAP], true)
-      HAVE_LDAP=1
-      AC_DEFINE([HAVE_LDAP], [1], [Define if you have libldap])
-    ],
-    [
-      AC_MSG_WARN([libldap not found, will not be compiled (--without-ldap to disable ldap support)])
-      AM_CONDITIONAL([USE_LDAP], false)
-    ],
-    []
-  ),
-  AM_CONDITIONAL([USE_LDAP], false)
-)
-
 # CURL
 AC_ARG_WITH(
   [curl],
@@ -124,41 +93,9 @@ PKG_CHECK_MODULES(
   ]
 )
 
-# ykclient (no pkg-config found)
-AC_ARG_WITH(
-  [ykclient],
-  AS_HELP_STRING([--without-ykclient], [disable support for ykclient]),
-  [],
-  [with_ykclient=yes]
-)
-
-LIBYKCLIENT_LIBS=
-LIBYKCLIENT_CFLAGS=
-HAVE_YKCLIENT=0
-AS_IF(
-  [test "x$with_ykclient" != xno],
-  AC_CHECK_LIB(
-    [ykclient],
-    [ykclient_init],
-    [
-      AC_SUBST([LIBYKCLIENT_LIBS], ["-lykclient"])
-      AM_CONDITIONAL([USE_YKCLIENT], true)
-      HAVE_YKCLIENT=1
-      AC_DEFINE([HAVE_YKCLIENT], [1], [Define if you have ykclient])
-    ],
-    [
-      AC_MSG_WARN([libykclient not found, will not be compiled (--without-ykclient to disable ykclient support)])
-      AM_CONDITIONAL([USE_YKCLIENT], false)
-    ],
-    []
-  ),
-  AM_CONDITIONAL([USE_YKCLIENT], false)
-)
-
 AM_CONDITIONAL(COMPILER_IS_CLANG, [test x"$CC" = xclang])
 
 AC_CONFIG_FILES([Makefile])
-#AC_CONFIG_FILES([Makefile test/Makefile])
 AC_OUTPUT
 
 AC_MSG_NOTICE([Summary of build options:
@@ -166,6 +103,5 @@ AC_MSG_NOTICE([Summary of build options:
   Host type:          ${host}
   Compiler:           ${CC}
   Library types:      Shared=${enable_shared}, Static=${enable_static}
-  Dependencies:       LDAP=${HAVE_LDAP}, YKCLIENT=${HAVE_YKCLIENT}
 ])
 

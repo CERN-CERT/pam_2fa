@@ -27,17 +27,11 @@ free_config(module_config *cfg)
 {
     if (cfg) {
         free_and_reset_str(&cfg->capath);
-        free_and_reset_str(&cfg->ldap_uri);
-        free_and_reset_str(&cfg->ldap_basedn);
-        free_and_reset_str(&cfg->ldap_attr);
-        free_and_reset_str(&cfg->gauth_prefix);
         free_and_reset_str(&cfg->gauth_uri_prefix);
         free_and_reset_str(&cfg->gauth_uri_suffix);
-        free_and_reset_str(&cfg->yk_prefix);
         free_and_reset_str(&cfg->yk_uri);
-        free_and_reset_str(&cfg->yk_key);
-        free_and_reset_str(&cfg->yk_user_file);
         free_and_reset_str(&cfg->domain);
+        free_and_reset_str(&cfg->trusted_file);
         free(cfg);
     }
 }
@@ -122,8 +116,8 @@ int parse_uint_option(pam_handle_t *pamh, const char* buf,
     return value_pos;
 }
 
-int
-parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **ncfg)
+module_config *
+parse_config(pam_handle_t *pamh, int argc, const char **argv)
 {
     module_config *cfg = NULL;
     int mem_error = 0;
@@ -132,7 +126,7 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
     cfg = (module_config *) calloc(1, sizeof(module_config));
     if (!cfg) {
         pam_syslog(pamh, LOG_CRIT, "Out of memory");
-        return CONFIG_ERROR;
+        return NULL;
     }
 
     for (i = 0; i < argc; ++i) {
@@ -140,27 +134,16 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
         if (retval) cfg->debug = 1;
         if (retval == 0) retval = parse_uint_option(pamh, argv[i], "max_retry=", &cfg->retry);
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "capath=", &cfg->capath);
-#ifdef HAVE_LDAP
-        if (retval == 0) retval = parse_str_option(pamh, argv[i], "ldap_uri=", &cfg->ldap_uri);
-        if (retval == 0) retval = parse_str_option(pamh, argv[i], "ldap_attr=", &cfg->ldap_attr);
-        if (retval == 0) retval = parse_str_option(pamh, argv[i], "ldap_basedn=", &cfg->ldap_basedn);
-#endif
-        if (retval == 0) retval = parse_str_option(pamh, argv[i], "gauth_prefix=", &cfg->gauth_prefix);
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "gauth_uri_prefix=", &cfg->gauth_uri_prefix);
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "gauth_uri_suffix=", &cfg->gauth_uri_suffix);
-#ifdef HAVE_YKCLIENT
-        if (retval == 0) retval = parse_str_option(pamh, argv[i], "yk_prefix=", &cfg->yk_prefix);
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "yk_uri=", &cfg->yk_uri);
-        if (retval == 0) retval = parse_uint_option(pamh, argv[i], "yk_id=", &cfg->yk_id);
-        if (retval == 0) retval = parse_str_option(pamh, argv[i], "yk_key=", &cfg->yk_key);
-        if (retval == 0) retval = parse_str_option(pamh, argv[i], "yk_user_file=", &cfg->yk_user_file);
-#endif
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "domain=", &cfg->domain);
+        if (retval == 0) retval = parse_str_option(pamh, argv[i], "trusted_file=", &cfg->domain);
 
         if (0 == retval) {
             pam_syslog(pamh, LOG_ERR, "Invalid option: %s", argv[i]);
             free_config(cfg);
-            return CONFIG_ERROR;
+            return NULL;
         } else if (retval < 0) {
             mem_error = retval;
             break;
@@ -168,66 +151,40 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **nc
     }
 
     //DEFAULT VALUES
-    if (!cfg->retry &&  !mem_error)
-        cfg->retry = MAX_RETRY;
-    if (!cfg->gauth_prefix &&  !mem_error)
-        mem_error = strdup_or_die(&cfg->gauth_prefix, GAUTH_PREFIX);
-    if (!cfg->yk_prefix &&  !mem_error)
-        mem_error = strdup_or_die(&cfg->yk_prefix, YK_PREFIX);
-    if (!cfg->yk_user_file &&  !mem_error)
-        mem_error = strdup_or_die(&cfg->yk_user_file, YK_DEFAULT_USER_FILE);
+    if (!cfg->retry && !mem_error)
+        cfg->retry = DEFAULT_MAX_RETRY;
+    if (!cfg->trusted_file && !mem_error)
+        mem_error = strdup_or_die(&cfg->trusted_file, DEFAULT_TRUSTED_FILE);
 
     // in case we got a memory error in the previous code, give up immediately
     if (mem_error) {
         pam_syslog(pamh, LOG_CRIT, "Out of memory");
         free_config(cfg);
-        return CONFIG_ERROR;
+        return NULL;
     }
-
-    if (cfg->gauth_prefix)
-        cfg->gauth_prefix_len = strlen(cfg->gauth_prefix);
-    if (cfg->yk_prefix)
-        cfg->yk_prefix_len = strlen(cfg->yk_prefix);
-
-#ifdef HAVE_LDAP
-    if (cfg->ldap_uri && cfg->ldap_attr && cfg->ldap_basedn)
-        cfg->ldap_enabled = 1;
-#endif /* HAVE_LDAP */
-
     if (cfg->gauth_uri_prefix && cfg->gauth_uri_suffix)
         cfg->gauth_enabled = 1;
 
-    if (cfg->yk_id)
+    if (cfg->yk_uri)
         cfg->yk_enabled = 1;
 
 
     DBG(("debug => %d",           cfg->debug));
     DBG(("retry => %d",           cfg->retry));
     DBG(("capath => %d",          cfg->capath));
-#ifdef HAVE_LDAP
-    DBG(("ldap_enabled = %s",     cfg->ldap_enabled));
-    DBG(("ldap_uri = %s",         cfg->ldap_uri));
-    DBG(("ldap_basedn => '%s'",   cfg->ldap_basedn));
-    DBG(("ldap_attr => %s",       cfg->ldap_attr));
-#endif /* HAVE_LDAP */
     DBG(("gauth_enabled => %s",   cfg->gauth_enabled));
-    DBG(("gauth_prefix => %s",    cfg->gauth_prefix));
     DBG(("gauth_uri_prefix => %s",cfg->gauth_uri_prefix));
     DBG(("gauth_uri_suffix => %s",cfg->gauth_uri_suffix));
     DBG(("yk_enabled => %s",      cfg->yk_enabled));
-    DBG(("yk_prefix => %s",       cfg->yk_prefix));
     DBG(("yk_uri => %s",          cfg->yk_uri));
-    DBG(("yk_id => %s",           cfg->yk_id));
-    DBG(("yk_key => %s",          cfg->yk_key));
-    DBG(("yk_user_file => %s",    cfg->yk_user_file));
     DBG(("domain => %s",          cfg->domain));
+    DBG(("trusted_file => %s",    cfg->trusted_file));
 
     if (!cfg->gauth_enabled && !cfg->yk_enabled) {
         pam_syslog(pamh, LOG_ERR, "No configured 2nd factors");
         free_config(cfg);
-        return CONFIG_ERROR;
+        return NULL;
     }
 
-    *ncfg = cfg;
-    return OK;
+    return cfg;
 }

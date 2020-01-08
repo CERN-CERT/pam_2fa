@@ -30,35 +30,21 @@ typedef struct {
     int debug;
     unsigned int retry;
     char *capath;
-    int ldap_enabled;
-    char *ldap_uri;
-    char *ldap_basedn;
-    char *ldap_attr;
     int gauth_enabled;
-    char *gauth_prefix;
-    size_t gauth_prefix_len;
     char *gauth_uri_prefix;
     char *gauth_uri_suffix;
-    char *smtp_server;
     int yk_enabled;
-    char *yk_prefix;
-    size_t yk_prefix_len;
     char *yk_uri;
-    unsigned int yk_id;
-    char *yk_key;
-    char *yk_user_file;
     char *domain;
+    char *trusted_file;
 } module_config;
 
+// Defaults
+#define DEFAULT_MAX_RETRY 1
+#define DEFAULT_TRUSTED_FILE ".k5login"
 
 #define GAUTH_LOGIN_LEN 31
 #define YK_PUBLICID_LEN 12
-
-typedef struct {
-    const char *username;
-    _Bool username_allocated;
-    char **yk_publicids;
-} user_config;
 
 struct pam_2fa_privs {
     unsigned int is_dropped;
@@ -68,7 +54,7 @@ struct pam_2fa_privs {
     int nbgrps;
 };
 
-typedef int (*auth_func) (pam_handle_t * pamh, user_config * user_cfg, module_config * cfg, const char *otp);
+typedef int (*auth_func) (pam_handle_t * pamh, module_config * cfg, const char* username, const char *otp);
 
 typedef struct {
     auth_func do_auth;
@@ -81,53 +67,18 @@ typedef struct {
 
 #define LOG_PREFIX "[pam_2fa] "
 
-#define ROOT_USER "root"
-
-#define YK_DEFAULT_USER_FILE ".ssh/trusted_yubikeys"
-#define MAX_RETRY 1
-
 #define GAUTH_OTP_LEN 6
-#define GAUTH_DEFAULT_ACTION "CheckUser"
-
 #define YK_OTP_LEN 44
-#define YK_IDS_DEFAULT_SIZE 8
 
-#define GAUTH_PREFIX "GAuth:"
-#define YK_PREFIX    "YubiKey:"
-
-#define ERROR_BINDING_LDAP_SERVER -100
-#define ERROR_CONNECTION_LDAP_SERVER -101
-#define ERROR_SEARCH_LDAP -102
-#define ERROR_NORESULT_LDAP -103
-#define ERROR_ALLOCATING_BASE -104
-
-#define OK 666
-#define ERROR -1
-#define CONFIG_ERROR -2666
-#define SEARCH_ERR -3663
-#define SEARCH_SUCCESS 6655
-
-int parse_config(pam_handle_t *pamh, int argc, const char **argv, module_config **ncfg);
+module_config * parse_config(pam_handle_t *pamh, int argc, const char **argv);
 void free_config(module_config *cfg);
 
-user_config *get_user_config(pam_handle_t * pamh, const module_config *cfg);
-void free_user_config(user_config * user_cfg);
+char * get_user(pam_handle_t * pamh, const module_config *cfg);
 
 int pam_2fa_drop_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struct passwd *pw);
 int pam_2fa_regain_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struct passwd *pw);
 
-#ifdef HAVE_LDAP
-int ldap_search_factors(pam_handle_t *pamh, const module_config * cfg, const char *username, user_config *user_cfg);
-#endif
-
 extern const auth_mod gauth_auth;
-
-#ifdef HAVE_YKCLIENT
-int yk_load_user_file(pam_handle_t *pamh, const module_config *cfg, struct passwd *user_entry, char ***user_publicids);
-int yk_get_publicid(pam_handle_t *pamh, char *buf, size_t *yk_id_pos, size_t *yk_id_len, char ***yk_publicids);
-void yk_free_publicids(char **publicids);
-
 extern const auth_mod yk_auth;
-#endif
 
 #endif /* HEADER_PAM_2FA_H */

@@ -16,7 +16,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
                                    int argc, const char **argv)
 {
     module_config *cfg = NULL;
-    user_config *user_cfg = NULL;
+    char* username;
     int retval;
     unsigned int trial;
     const char *authtok = NULL;
@@ -27,39 +27,32 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
         return PAM_AUTH_ERR;
     }
 
-    retval = parse_config(pamh, argc, argv, &cfg);
-
-    //CHECK PAM CONFIGURATION
-    if (retval == CONFIG_ERROR) {
+    cfg = parse_config(pamh, argc, argv);
+    if (cfg == NULL) {
         D(("Invalid configuration"));
         pam_syslog(pamh, LOG_ERR, "Invalid parameters to pam_2fa module");
         pam_error(pamh, "Sorry, 2FA Pam Module is misconfigured, please contact admins!\n");
         return PAM_AUTH_ERR;
     }
 
-    // Get User configuration
-    user_cfg = get_user_config(pamh, cfg);
-    if(!user_cfg) {
-        pam_syslog(pamh, LOG_INFO, "Unable to get user configuration");
+    // Get User
+    username = get_user(pamh, cfg);
+    if (!username) {
         // cleanup
         free_config(cfg);
         return PAM_AUTH_ERR;
     }
 
-    const auth_mod *available_mods[4] = { NULL, NULL, NULL, NULL };
+    const auth_mod *available_mods[4] = { NULL, NULL, NULL };
     int menu_len = 0;
 
     if (cfg->gauth_enabled) {
         ++menu_len;
         available_mods[menu_len] = &gauth_auth;
     }
-    if (cfg->yk_enabled && user_cfg->yk_publicids) {
-#ifdef HAVE_YKCLIENT
+    if (cfg->yk_enabled) {
         ++menu_len;
         available_mods[menu_len] = &yk_auth;
-#else
-        DBG(("Yubikey configured, but ykclient not compiled (should never happen!)"));
-#endif
     }
 
     retval = PAM_AUTH_ERR;
@@ -70,13 +63,13 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
             size_t user_input_len;
             int i = 1;
 
-            pam_info(pamh, "Login for %s:\n", user_cfg->username);
+            pam_info(pamh, "Login for %s:\n", username);
             for (i = 1; i <= menu_len; ++i) {
                 pam_info(pamh, "        %d. %s", i, available_mods[i]->name);
             }
 
             if (pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &user_input, "\nOption (1-%d): ", menu_len) != PAM_SUCCESS) {
-                pam_syslog(pamh, LOG_INFO, "Unable to get 2nd factors for user '%s'", user_cfg->username);
+                pam_syslog(pamh, LOG_INFO, "Unable to get 2nd factors for user '%s'", username);
                 pam_error(pamh, "Unable to get user input");
                 retval = PAM_AUTH_ERR;
                 break;
@@ -105,8 +98,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
         } else if (menu_len == 1) {
             selected_auth_mod = available_mods[1];
         } else {
-            pam_syslog(pamh, LOG_INFO, "No supported 2nd factor for user '%s'", user_cfg->username);
-            pam_error(pamh, "No supported 2nd factors for user '%s'", user_cfg->username);
+            pam_syslog(pamh, LOG_INFO, "No supported 2nd factor for user '%s'", username);
+            pam_error(pamh, "No supported 2nd factors for user '%s'", username);
             retval = PAM_AUTH_ERR;
             break;
         }
@@ -119,13 +112,13 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
                     break;
                 }
             }
-            retval = selected_auth_mod->do_auth(pamh, user_cfg, cfg, user_input);
+            retval = selected_auth_mod->do_auth(pamh, cfg, username, user_input);
             free(user_input);
         }
     }
 
     // final cleanup
-    free_user_config(user_cfg);
+    free(username);
     free_config(cfg);
     return retval;
 }
