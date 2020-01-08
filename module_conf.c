@@ -11,8 +11,6 @@ static int raw_parse_option(pam_handle_t *pamh, const char* buf,
                             const char* opt_name_with_eq, char** dst);
 static int parse_str_option(pam_handle_t *pamh, const char* buf,
                             const char* opt_name_with_eq, char** dst);
-static int parse_sizet_option(pam_handle_t *pamh, const char* buf,
-                              const char* option, size_t* dst);
 static int parse_uint_option(pam_handle_t *pamh, const char* buf,
                              const char* opt_name_with_eq, unsigned int* dst);
 
@@ -116,24 +114,6 @@ int parse_uint_option(pam_handle_t *pamh, const char* buf,
   int value_pos = raw_parse_option(pamh, buf, opt_name_with_eq, 0);
     if (value_pos > 0) {
         sscanf(buf+value_pos, "%d", dst);
-        return 1;
-    } else if (value_pos == -1) {
-      // Don't crash on duplicate, ignore 2nd value
-      return 1;
-    }
-    return value_pos;
-}
-
-/**
- * Handles the parsing of a given option with size_t value.
- * See parse_uint_option for details of the arguments
- */
-int parse_sizet_option(pam_handle_t *pamh, const char* buf,
-                       const char* opt_name_with_eq, size_t* dst)
-{
-  int value_pos = raw_parse_option(pamh, buf, opt_name_with_eq, 0);
-    if (value_pos > 0) {
-        sscanf(buf+value_pos, "%zu", dst);
         return 1;
     } else if (value_pos == -1) {
       // Don't crash on duplicate, ignore 2nd value
