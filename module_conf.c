@@ -169,16 +169,16 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv)
         cfg->yk_enabled = 1;
 
 
-    DBG(("debug => %d",           cfg->debug));
-    DBG(("retry => %d",           cfg->retry));
-    DBG(("capath => %d",          cfg->capath));
-    DBG(("gauth_enabled => %s",   cfg->gauth_enabled));
-    DBG(("gauth_uri_prefix => %s",cfg->gauth_uri_prefix));
-    DBG(("gauth_uri_suffix => %s",cfg->gauth_uri_suffix));
-    DBG(("yk_enabled => %s",      cfg->yk_enabled));
-    DBG(("yk_uri => %s",          cfg->yk_uri));
-    DBG(("domain => %s",          cfg->domain));
-    DBG(("trusted_file => %s",    cfg->trusted_file));
+    DBG(("debug => %d",           cfg->debug))
+    DBG(("retry => %d",           cfg->retry))
+    DBG(("capath => %d",          cfg->capath))
+    DBG(("gauth_enabled => %i",   cfg->gauth_enabled))
+    DBG(("gauth_uri_prefix => %s",cfg->gauth_uri_prefix))
+    DBG(("gauth_uri_suffix => %s",cfg->gauth_uri_suffix))
+    DBG(("yk_enabled => %i",      cfg->yk_enabled))
+    DBG(("yk_uri => %s",          cfg->yk_uri))
+    DBG(("domain => %s",          cfg->domain))
+    DBG(("trusted_file => %s",    cfg->trusted_file))
 
     if (!cfg->gauth_enabled && !cfg->yk_enabled) {
         pam_syslog(pamh, LOG_ERR, "No configured 2nd factors");

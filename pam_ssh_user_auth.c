@@ -14,7 +14,7 @@
 #include <security/pam_ext.h>
 #include <security/pam_modutil.h>
 
-#define DEBUG
+#define PAM_DEBUG
 #include <security/_pam_macros.h>
 
 #include "ssh_user_auth.h"

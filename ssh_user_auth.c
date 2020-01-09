@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DEBUG
+#define PAM_DEBUG
 #include <security/_pam_macros.h>
 
 #include "ssh_user_auth.h"
@@ -13,12 +13,12 @@ const char * get_ssh_user_auth(pam_handle_t * pamh, int debug)
     ssh_user_auth = pam_getenv(pamh, "SSH_USER_AUTH");
     if (ssh_user_auth == NULL) {
         if (debug)
-            D("no SSH_USER_AUTH");
+            D(("no SSH_USER_AUTH"));
         return NULL;
     }
     if (strlen(ssh_user_auth) == 0) {
         if (debug)
-            D("empty SSH_USER_AUTH");
+            D(("empty SSH_USER_AUTH"));
         return NULL;
     }
     return ssh_user_auth;
@@ -50,7 +50,7 @@ char * extract_details(pam_handle_t * pamh, int debug, const char * method)
     if (tok != NULL) {
         tok += method_len;
         if (*tok != ':' || *(tok + 1) != ' ') {
-            D("empty details in SSH_USER_AUTH");
+            D(("empty details in SSH_USER_AUTH"));
         } else {
             details = strdup(tok + 2);
         }

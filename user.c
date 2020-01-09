@@ -147,10 +147,10 @@ char * get_user(pam_handle_t * pamh, const module_config *cfg)
     struct passwd *user_entry;
     
     if (pam_get_item(pamh, PAM_USER, (const void **)&username) != PAM_SUCCESS) {
-        DBG(("Unable to retrieve username!"));
+        DBG(("Unable to retrieve username!"))
         return NULL;
     }
-    DBG(("username from PAM = %s", username));
+    DBG(("username from PAM = %s", username))
 
     if (cfg->domain != NULL) {
         kerberos_principal = extract_details(pamh, cfg->debug, "gssapi-with-mic");

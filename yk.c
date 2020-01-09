@@ -43,8 +43,7 @@ int yk_auth_func(pam_handle_t * pamh, module_config * cfg, const char* username,
     char * payload;
     int return_value = PAM_AUTH_ERR;
 
-    DBG(("Yubikey = %s", otp));
-    pam_syslog(pamh, LOG_DEBUG, "Yubikey OTP: %s (%zu)", otp, strlen(otp));
+    DBG(("Yubikey = %s", otp))
 
     if (!valid_otp(cfg, otp)) {
         return PAM_AUTH_ERR;
