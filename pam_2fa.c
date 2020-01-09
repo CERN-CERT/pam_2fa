@@ -77,8 +77,12 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh,
                 retval = PAM_AUTH_ERR;
                 break;
             }
+            if (user_input == NULL) {
+                pam_error(pamh, "Invalid input");
+                break;
+            }
 
-            user_input_len = user_input ? strlen(user_input) : 0;
+            user_input_len = strlen(user_input);
             for (i = 1; i <= menu_len; ++i) {
                 if (available_mods[i]->otp_len) {
                     if (user_input_len == available_mods[i]->otp_len) {
@@ -112,6 +116,10 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh,
                     pam_syslog(pamh, LOG_INFO, "Unable to get %s", selected_auth_mod->prompt);
                     pam_error(pamh, "Unable to get user input");
                     retval = PAM_AUTH_ERR;
+                    break;
+                }
+                if (user_input == NULL) {
+                    pam_error(pamh, "Invalid input");
                     break;
                 }
             }
