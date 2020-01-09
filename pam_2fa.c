@@ -90,7 +90,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh,
     module_config *cfg = NULL;
     char* username;
     int retval;
-    const char *authtok = NULL;
+    const char *authtok;
     int final_return = PAM_AUTH_ERR;
 
     cfg = parse_config(pamh, argc, argv);
