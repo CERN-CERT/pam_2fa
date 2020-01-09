@@ -132,7 +132,6 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv)
     for (i = 0; i < argc; ++i) {
         int retval = !strcmp(argv[i], "debug");
         if (retval) cfg->debug = 1;
-        if (retval == 0) retval = parse_uint_option(pamh, argv[i], "max_retry=", &cfg->retry);
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "capath=", &cfg->capath);
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "gauth_uri_prefix=", &cfg->gauth_uri_prefix);
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "gauth_uri_suffix=", &cfg->gauth_uri_suffix);
@@ -151,8 +150,6 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv)
     }
 
     //DEFAULT VALUES
-    if (!cfg->retry && !mem_error)
-        cfg->retry = DEFAULT_MAX_RETRY;
     if (!cfg->trusted_file && !mem_error)
         mem_error = strdup_or_die(&cfg->trusted_file, DEFAULT_TRUSTED_FILE);
 
@@ -170,7 +167,6 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv)
 
     if (cfg->debug) {
         DBG(pamh, 1, "debug => %d",           cfg->debug);
-        DBG(pamh, 1, "retry => %d",           cfg->retry);
         DBG(pamh, 1, "capath => %s",          cfg->capath);
         DBG(pamh, 1, "gauth_enabled => %i",   cfg->gauth_enabled);
         DBG(pamh, 1, "gauth_uri_prefix => %s",cfg->gauth_uri_prefix);

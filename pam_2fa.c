@@ -21,7 +21,6 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh,
     module_config *cfg = NULL;
     char* username;
     int retval;
-    unsigned int trial;
     const char *authtok = NULL;
 
     cfg = parse_config(pamh, argc, argv);
@@ -59,7 +58,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh,
     }
 
     retval = PAM_AUTH_ERR;
-    for (trial = 0; trial < cfg->retry && retval != PAM_SUCCESS; ++trial) {
+    do {
         const auth_mod *selected_auth_mod = NULL;
         char *user_input = NULL;
         if (menu_len > 1) {
@@ -126,7 +125,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh,
             retval = selected_auth_mod->do_auth(pamh, cfg, username, user_input);
             free(user_input);
         }
-    }
+    } while (0);
 
     // final cleanup
     free(username);

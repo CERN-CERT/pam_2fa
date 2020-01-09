@@ -24,7 +24,6 @@
 
 typedef struct {
     int debug;
-    unsigned int retry;
     char *capath;
     int gauth_enabled;
     char *gauth_uri_prefix;
@@ -36,7 +35,6 @@ typedef struct {
 } module_config;
 
 // Defaults
-#define DEFAULT_MAX_RETRY 1
 #define DEFAULT_TRUSTED_FILE ".k5login"
 
 #define GAUTH_LOGIN_LEN 31
