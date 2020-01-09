@@ -40,8 +40,8 @@ static int do_menu_actions(pam_handle_t * pamh, module_config *cfg, const auth_m
 
     if (menu_len > 1) {
         pam_info(pamh, "Login for %s:\n", username);
-        for (int i = 1; i <= menu_len; ++i) {
-            pam_info(pamh, "        %d. %s", i, available_mods[i]->name);
+        for (int i = 0; i < menu_len; ++i) {
+            pam_info(pamh, "        %d. %s", i+1, available_mods[i]->name);
         }
 
         if (pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &user_input, "\nOption (1-%d): ", menu_len) != PAM_SUCCESS) {
@@ -55,7 +55,7 @@ static int do_menu_actions(pam_handle_t * pamh, module_config *cfg, const auth_m
         }
 
         user_input_len = strlen(user_input);
-        for (int i = 1; i <= menu_len; ++i) {
+        for (int i = 0; i < menu_len; ++i) {
             if (available_mods[i]->otp_len) {
                 if (user_input_len == available_mods[i]->otp_len) {
                     return do_authentication(pamh, cfg, available_mods[i], username, user_input);
@@ -64,8 +64,8 @@ static int do_menu_actions(pam_handle_t * pamh, module_config *cfg, const auth_m
         }
 
         /* No option selected based on OTP len, check if it matches the menu */
-        if (user_input_len == 1 && user_input[0] >= '1' && user_input[0] <= menu_len + '0') {
-            const auth_mod *selected_auth_mod = available_mods[user_input[0] - '0'];
+        if (user_input_len == 1 && user_input[0] >= '1' && user_input[0] < menu_len + '1') {
+            const auth_mod *selected_auth_mod = available_mods[user_input[0] - '1'];
             free(user_input);
             return do_authentication(pamh, cfg, selected_auth_mod, username, NULL);
         } else {
@@ -74,7 +74,7 @@ static int do_menu_actions(pam_handle_t * pamh, module_config *cfg, const auth_m
             return PAM_AUTH_ERR;
         }
     } else if (menu_len == 1) {
-        return do_authentication(pamh, cfg, available_mods[1], username, NULL);
+        return do_authentication(pamh, cfg, available_mods[0], username, NULL);
     } else {
         pam_syslog(pamh, LOG_INFO, "No supported 2nd factor for user '%s'", username);
         pam_error(pamh, "No supported 2nd factors for user '%s'", username);
@@ -112,16 +112,16 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh,
         goto clean_cfg;
     }
 
-    const auth_mod *available_mods[3] = { NULL, NULL, NULL };
+    const auth_mod *available_mods[3] = { NULL, NULL };
     int menu_len = 0;
 
     if (cfg->gauth_enabled) {
-        ++menu_len;
         available_mods[menu_len] = &gauth_auth;
+        ++menu_len;
     }
     if (cfg->yk_enabled) {
-        ++menu_len;
         available_mods[menu_len] = &yk_auth;
+        ++menu_len;
     }
 
     final_return = do_menu_actions(pamh, cfg, available_mods, menu_len, username);
