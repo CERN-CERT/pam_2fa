@@ -174,6 +174,7 @@ char * get_user(pam_handle_t * pamh, const module_config *cfg)
     user_entry = pam_modutil_getpwnam(pamh, username);
     if (user_entry == NULL) {
         ERR(pamh, "Can't get passwd entry for '%s'", username);
+        return NULL;
     }
 
     if (user_entry->pw_uid >= 1000) {
