@@ -127,7 +127,7 @@ static char * get_real_user(pam_handle_t * pamh, const module_config *cfg, const
 {
     char *username = NULL;
 
-    pam_info(pamh, "You logged-in as the service account '%s', we need to know who you are for 2nd factor authentication\n", user->pw_name);
+    pam_info(pamh, "You logged-in as the service account '%s', we need to know who you are for 2nd factor authentication", user->pw_name);
     if (pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &username, "login: ") != PAM_SUCCESS) {
         pam_syslog(pamh, LOG_INFO, "Unable to get real username for account '%s'", user->pw_name);
         pam_error(pamh, "Unable to get user input");
