@@ -7,7 +7,6 @@ if COMPILER_IS_CLANG
   AM_CFLAGS = -Weverything \
         -Wno-padded \
         -Wno-disabled-macro-expansion \
-        -Wno-unused-parameter \
         -Wno-reserved-id-macro
 else
   AM_CFLAGS = -Wall -Wextra \
@@ -30,9 +29,6 @@ else
         -Wwrite-strings \
         -Wundef \
         -Wunused \
-        -Wno-unused-parameter \
-        -Wno-format-zero-length \
-        -Wno-format-y2k \
         -Wunsafe-loop-optimizations
 endif
 AM_CFLAGS += -fPIC
