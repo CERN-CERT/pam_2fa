@@ -99,6 +99,7 @@ static int validate_real_user(pam_handle_t * pamh, const module_config *cfg, con
             ++buf_next_line;
             if (compare_user(pamh, cfg, username, buf_pos) > 0) {
                 retval = 1;
+                pam_syslog(pamh, LOG_INFO, "Authenticating '%s' as '%s' (validated from trusted file)", user->pw_name, username);
                 goto clean_buffer;
             }
             buf_pos = buf_next_line;
