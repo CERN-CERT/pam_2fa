@@ -1,6 +1,10 @@
 #ifndef HEADER_PAM_2FA_H
 #define HEADER_PAM_2FA_H
 
+#ifdef HAVE_CONFIG_H
+    #include "config.h"
+#endif
+
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,8 +53,8 @@ typedef struct {
 struct pam_2fa_privs {
     unsigned int is_dropped;
     uid_t old_uid;
-    gid_t old_gid;
-    gid_t *grplist;
+    GETGROUPS_T old_gid;
+    GETGROUPS_T *grplist;
     int nbgrps;
 };
 

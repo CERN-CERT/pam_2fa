@@ -42,7 +42,7 @@ libdir = $(PAMDIR)
 lib_LTLIBRARIES = pam_2fa.la pam_ssh_user_auth.la
 pam_2fa_la_SOURCES = priv.c module_conf.c pam_2fa.c user.c ssh_user_auth.c gauth.c curl.c yk.c
 pam_2fa_la_CFLAGS = $(AM_CFLAGS) $(LIBCURL_CFLAGS)
-pam_2fa_la_LIBADD = $(AM_LDFLAGS) $(LIBCURL_LIBS) -lpam
+pam_2fa_la_LIBADD = $(AM_LDFLAGS) $(LIBCURL_LIBS) $(GETGROUPS_LIBS) -lpam
 pam_2fa_la_LDFLAGS = -module -avoid-version
 
 pam_ssh_user_auth_la_SOURCES = pam_ssh_user_auth.c ssh_user_auth.c
