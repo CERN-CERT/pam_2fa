@@ -119,7 +119,9 @@ fail:
 /**
  * Process all the data given by curl by simply ignoring it
  */
-size_t curl_callback_ignore (char *ptr, size_t size, size_t nmemb, void *userdata)
+size_t curl_callback_ignore (__attribute__((unused)) char *ptr,
+                             size_t size, size_t nmemb,
+                             __attribute__((unused)) void *userdata)
 {
     return size * nmemb;
 }

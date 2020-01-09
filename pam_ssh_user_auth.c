@@ -18,8 +18,10 @@
 
 #include "ssh_user_auth.h"
 
-PAM_EXTERN int pam_sm_setcred(pam_handle_t * pamh, int flags, int argc,
-                              const char **argv)
+PAM_EXTERN int pam_sm_setcred(__attribute__((unused)) pam_handle_t * pamh,
+                              __attribute__((unused)) int flags,
+                              __attribute__((unused)) int argc,
+                              __attribute__((unused)) const char **argv)
 {
     return PAM_SUCCESS;
 }

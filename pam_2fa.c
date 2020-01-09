@@ -4,15 +4,18 @@
 
 #include "pam_2fa.h"
 
-PAM_EXTERN int pam_sm_setcred(pam_handle_t * pamh, int flags, int argc,
-                              const char **argv)
+PAM_EXTERN int pam_sm_setcred(__attribute__((unused)) pam_handle_t * pamh,
+                              __attribute__((unused)) int flags,
+                              __attribute__((unused)) int argc,
+                              __attribute__((unused)) const char **argv)
 {
     return PAM_SUCCESS;
 }
 
 
 // CALLED BY PAM_AUTHENTICATE
-PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
+PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh,
+                                   __attribute__((unused)) int flags, /* TODO: We should honor PAM_SILENT somehow */
                                    int argc, const char **argv)
 {
     module_config *cfg = NULL;
