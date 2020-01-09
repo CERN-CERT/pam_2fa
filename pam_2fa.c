@@ -43,7 +43,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
         return PAM_AUTH_ERR;
     }
 
-    const auth_mod *available_mods[4] = { NULL, NULL, NULL };
+    const auth_mod *available_mods[3] = { NULL, NULL, NULL };
     int menu_len = 0;
 
     if (cfg->gauth_enabled) {

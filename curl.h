@@ -24,7 +24,6 @@ CURLcode pam_curl_perform(struct pam_curl_state * state);
            goto endpoint; \
        } \
    } while (0)
-#endif /* HEADER_PAM_2FA_CURL_H */
 
 #define HTTP_BUF_LEN 256
 struct curl_response {
@@ -34,3 +33,5 @@ struct curl_response {
 
 size_t curl_callback_ignore (char *ptr, size_t size, size_t nmemb, void *userdata);
 size_t curl_callback_copy (char *ptr, size_t size, size_t nmemb, void *userdata);
+
+#endif /* HEADER_PAM_2FA_CURL_H */
