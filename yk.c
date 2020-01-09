@@ -14,18 +14,18 @@ const auth_mod yk_auth = {
     .otp_len = YK_OTP_LEN,
 };
 
-static int valid_otp(module_config * cfg, const char *otp)
+static int valid_otp(pam_handle_t * pamh, module_config * cfg, const char *otp)
 {
     unsigned int i = 0;
 
     for (i = 0; otp[i]; ++i) {
         if (!isalpha(otp[i])) {
-            DBG(("INCORRRECT code from user!"))
+            DBG_C(pamh, cfg, "INCORRRECT code from user!");
             return 0;
         }
     }
     if (i != YK_OTP_LEN) {
-        DBG(("INCORRRECT code from user!"))
+        DBG_C(pamh, cfg, "INCORRRECT code from user!");
         return 0;
     }
 
@@ -43,9 +43,9 @@ int yk_auth_func(pam_handle_t * pamh, module_config * cfg, const char* username,
     char * payload;
     int return_value = PAM_AUTH_ERR;
 
-    DBG(("Yubikey = %s", otp))
+    DBG_C(pamh, cfg, "Yubikey = %s", otp);
 
-    if (!valid_otp(cfg, otp)) {
+    if (!valid_otp(pamh, cfg, otp)) {
         return PAM_AUTH_ERR;
     }
 
@@ -55,9 +55,11 @@ int yk_auth_func(pam_handle_t * pamh, module_config * cfg, const char* username,
     }
     resp = (struct curl_response*) calloc(1, sizeof(struct curl_response));
     if (resp == NULL) {
+        ERR(pamh, "Yubikey: unable to allocate buffer for curl response");
         goto clean_state;
     }
     if (asprintf(&payload, yk_association_request, username, otp) < 0) {
+        ERR(pamh, "Yubikey: unable to allocate buffer for curl payload");
         goto clean_resp;
     }
 

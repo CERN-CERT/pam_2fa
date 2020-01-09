@@ -57,9 +57,9 @@ int raw_parse_option(pam_handle_t *pamh, const char* buf, const char* opt_name_w
     size_t opt_len = strlen(opt_name_with_eq);
     if (0 == strncmp(buf, opt_name_with_eq, opt_len)) {
         if (dst && *dst) {
-            pam_syslog(pamh, LOG_ERR,
-                       "Duplicated option : %s. Only first one is taken into account",
-                       opt_name_with_eq);
+            ERR(pamh,
+                "Duplicated option : %s. Only first one is taken into account",
+                opt_name_with_eq);
             return -1;
         } else {
           return (int)opt_len;
@@ -125,7 +125,7 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv)
 
     cfg = (module_config *) calloc(1, sizeof(module_config));
     if (!cfg) {
-        pam_syslog(pamh, LOG_CRIT, "Out of memory");
+        ERR(pamh, "Out of memory, unable to allocate configuration");
         return NULL;
     }
 
@@ -141,7 +141,7 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv)
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "trusted_file=", &cfg->domain);
 
         if (0 == retval) {
-            pam_syslog(pamh, LOG_ERR, "Invalid option: %s", argv[i]);
+            ERR(pamh, "Invalid configuration option: %s", argv[i]);
             free_config(cfg);
             return NULL;
         } else if (retval < 0) {
@@ -158,7 +158,7 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv)
 
     // in case we got a memory error in the previous code, give up immediately
     if (mem_error) {
-        pam_syslog(pamh, LOG_CRIT, "Out of memory");
+        ERR(pamh, "Out of memory, unable to parse configuration");
         free_config(cfg);
         return NULL;
     }
@@ -168,20 +168,21 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv)
     if (cfg->yk_uri)
         cfg->yk_enabled = 1;
 
-
-    DBG(("debug => %d",           cfg->debug))
-    DBG(("retry => %d",           cfg->retry))
-    DBG(("capath => %d",          cfg->capath))
-    DBG(("gauth_enabled => %i",   cfg->gauth_enabled))
-    DBG(("gauth_uri_prefix => %s",cfg->gauth_uri_prefix))
-    DBG(("gauth_uri_suffix => %s",cfg->gauth_uri_suffix))
-    DBG(("yk_enabled => %i",      cfg->yk_enabled))
-    DBG(("yk_uri => %s",          cfg->yk_uri))
-    DBG(("domain => %s",          cfg->domain))
-    DBG(("trusted_file => %s",    cfg->trusted_file))
+    if (cfg->debug) {
+        DBG(pamh, 1, "debug => %d",           cfg->debug);
+        DBG(pamh, 1, "retry => %d",           cfg->retry);
+        DBG(pamh, 1, "capath => %s",          cfg->capath);
+        DBG(pamh, 1, "gauth_enabled => %i",   cfg->gauth_enabled);
+        DBG(pamh, 1, "gauth_uri_prefix => %s",cfg->gauth_uri_prefix);
+        DBG(pamh, 1, "gauth_uri_suffix => %s",cfg->gauth_uri_suffix);
+        DBG(pamh, 1, "yk_enabled => %i",      cfg->yk_enabled);
+        DBG(pamh, 1, "yk_uri => %s",          cfg->yk_uri);
+        DBG(pamh, 1, "domain => %s",          cfg->domain);
+        DBG(pamh, 1, "trusted_file => %s",    cfg->trusted_file);
+    }
 
     if (!cfg->gauth_enabled && !cfg->yk_enabled) {
-        pam_syslog(pamh, LOG_ERR, "No configured 2nd factors");
+        ERR(pamh, "No configured 2nd factors");
         free_config(cfg);
         return NULL;
     }

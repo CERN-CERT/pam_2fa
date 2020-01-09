@@ -11,14 +11,8 @@ void __module_unload(void)
     curl_global_cleanup();
 }
 
-#ifdef PAM_CURL_DBG
-#undef PAM_CURL_DBG
-#endif
-#define PAM_CURL_DBG(x) if (state->debug) { D(x); }
-
 struct pam_curl_state {
     pam_handle_t * pamh;
-    int debug;
     CURL *curlh;
     struct curl_slist *header_list;
     char curl_error[CURL_ERROR_SIZE];
@@ -41,21 +35,22 @@ struct pam_curl_state* pam_curl_init(pam_handle_t * pamh, module_config * cfg)
     CURLcode retval;
 
     state = (struct pam_curl_state *) calloc(1, sizeof(struct pam_curl_state));
-    if (state == NULL)
+    if (state == NULL) {
+        ERR(pamh, "Out of memory, unable to allocate curl state");
         return state;
+    }
 
     state->pamh = pamh;
-    state->debug = cfg->debug;
     state->curlh = curl_easy_init();
     if (state->curlh == NULL) {
-        PAM_CURL_DBG(("curl_easy_init failed"))
+        ERR(pamh, "curl_easy_init failed");
         free(state);
         return NULL;
     }
 
     retval = curl_easy_setopt(state->curlh, CURLOPT_ERRORBUFFER, state->curl_error);
     if (retval != CURLE_OK) {
-        PAM_CURL_DBG(("CURL: Unable to set error buffer"))
+        ERR(pamh, "CURL: Unable to set error buffer");
         pam_curl_cleanup(state);
         return NULL;
     }
@@ -87,8 +82,7 @@ int pam_curl_set_option(struct pam_curl_state * state, CURLoption option, ...)
     }
 
     if (retval != CURLE_OK) {
-        PAM_CURL_DBG(("Unable to set CURL options %i: %u", option, retval))
-        pam_syslog(state->pamh, LOG_ERR, "Unable to set CURL option %i: %s", option, state->curl_error);
+        ERR(state->pamh, "Unable to set CURL options %i: %s", option,  state->curl_error);
         return 0;
     }
     return 1;
@@ -100,6 +94,7 @@ int pam_curl_add_header(struct pam_curl_state * state, const char * header)
 
     tmp = curl_slist_append(state->header_list, header);
     if (tmp == NULL) {
+        ERR(state->pamh, "Unable to append header: %s", state->curl_error);
         return 0;
     }
     state->header_list = tmp;
@@ -114,8 +109,7 @@ CURLcode pam_curl_perform(struct pam_curl_state * state) {
 
     retval = curl_easy_perform(state->curlh);
     if ((retval != CURLE_OK) && (retval != CURLE_HTTP_RETURNED_ERROR)) {
-        PAM_CURL_DBG(("Unable to perform CURL request: %u", retval))
-        pam_syslog(state->pamh, LOG_ERR, "Unable to perform CURL request: %s", state->curl_error);
+        ERR(state->pamh, "Unable to perform CURL request: %u %s", retval, state->curl_error);
     }
     return retval;
 fail:

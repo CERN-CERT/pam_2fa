@@ -21,17 +21,17 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     unsigned int trial;
     const char *authtok = NULL;
 
-    retval = pam_get_item(pamh, PAM_AUTHTOK, (const void **) &authtok);
-    if (retval != PAM_SUCCESS || (authtok != NULL && !strcmp(authtok, AUTHTOK_INCORRECT))) {
-        D(("Previous authentication failed, let's stop here!"));
+    cfg = parse_config(pamh, argc, argv);
+    if (cfg == NULL) {
+        ERR(pamh, "Invalid parameters to pam_2fa module");
+        pam_error(pamh, "Sorry, 2FA Pam Module is misconfigured, please contact admins!\n");
         return PAM_AUTH_ERR;
     }
 
-    cfg = parse_config(pamh, argc, argv);
-    if (cfg == NULL) {
-        D(("Invalid configuration"));
-        pam_syslog(pamh, LOG_ERR, "Invalid parameters to pam_2fa module");
-        pam_error(pamh, "Sorry, 2FA Pam Module is misconfigured, please contact admins!\n");
+    retval = pam_get_item(pamh, PAM_AUTHTOK, (const void **) &authtok);
+    if (retval != PAM_SUCCESS || (authtok != NULL && !strcmp(authtok, AUTHTOK_INCORRECT))) {
+        DBG_C(pamh, cfg, "Previous authentication failed, let's stop here!");
+        free_config(cfg);
         return PAM_AUTH_ERR;
     }
 

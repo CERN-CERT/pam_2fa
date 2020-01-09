@@ -17,21 +17,21 @@ static int open_trusted_file(pam_handle_t * pamh, const module_config *cfg, cons
     struct stat st;
 
     if (asprintf(&filename, "%s/%s", user->pw_dir, cfg->trusted_file) < 0) {
-        pam_syslog(pamh, LOG_CRIT, "Can't allocate filename buffer");
+        ERR(pamh, "Can't allocate filename buffer");
         return -1;
     }
 
     fd = open(filename, O_RDONLY);
     if(fd < 0) {
-        pam_syslog(pamh, LOG_ERR, "Can't open file '%s'", filename);
+        ERR(pamh, "Can't open file '%s'", filename);
         goto err;
     }
     if (fstat(fd, &st) < 0) {
-        pam_syslog(pamh, LOG_ERR, "Can't get stats of file '%s'", filename);
+        ERR(pamh, "Can't get stats of file '%s'", filename);
         goto err_fd;
     }
     if (!S_ISREG(st.st_mode)) {
-        pam_syslog(pamh, LOG_ERR, "Not a regular file '%s'", filename);
+        ERR(pamh, "Not a regular file '%s'", filename);
         goto err_fd;
     }
     free(filename);
@@ -51,7 +51,7 @@ static int cut_principal(pam_handle_t * pamh, const module_config *cfg, char *in
         *kerberos_domain = '\0';
         return 1;
     }
-    pam_syslog(pamh, LOG_ERR, "Kerberos principal does not have expected domain, ignoring : '%s'", input);
+    ERR(pamh, "Kerberos principal does not have expected domain, ignoring : '%s'", input);
     return 0;
 }
 
@@ -86,6 +86,7 @@ static int validate_real_user(pam_handle_t * pamh, const module_config *cfg, con
     
     buffer = (char*) calloc(BUFF_LEN, 1);
     if (buffer == NULL) {
+        ERR(pamh, "User switch: unable to allocate buffer to read trusted file");
         goto clean_fd;
     }
 
@@ -106,13 +107,13 @@ static int validate_real_user(pam_handle_t * pamh, const module_config *cfg, con
         }
         remaining = strlen(buf_pos);
         if (remaining > BUFF_LEN / 2) {
-            pam_syslog(pamh, LOG_ERR, "Trusted file lines are too long!");
+            ERR(pamh, "Trusted file lines are too long!");
             goto clean_buffer;
         }
         memmove(buffer, buf_pos, remaining);
         buf_pos = buffer + remaining;
     }
-    pam_syslog(pamh, LOG_ERR, "Got an invalid username for account '%s': '%s'", user->pw_name, username);
+    ERR(pamh, "Got a non-trusted username for account '%s': '%s'", user->pw_name, username);
 
 clean_buffer:
     free(buffer);
@@ -129,7 +130,7 @@ static char * get_real_user(pam_handle_t * pamh, const module_config *cfg, const
 
     pam_info(pamh, "You logged-in as the service account '%s', we need to know who you are for 2nd factor authentication", user->pw_name);
     if (pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &username, "login: ") != PAM_SUCCESS || username == NULL) {
-        pam_syslog(pamh, LOG_INFO, "Unable to get real username for account '%s'", user->pw_name);
+        ERR(pamh, "Unable to get real username for account '%s'", user->pw_name);
         pam_error(pamh, "Unable to get user input");
         return NULL;
     }
@@ -148,10 +149,10 @@ char * get_user(pam_handle_t * pamh, const module_config *cfg)
     struct passwd *user_entry;
     
     if (pam_get_item(pamh, PAM_USER, (const void **)&username) != PAM_SUCCESS) {
-        DBG(("Unable to retrieve username!"))
+        ERR(pamh, "Unable to retrieve username!");
         return NULL;
     }
-    DBG(("username from PAM = %s", username))
+    DBG_C(pamh, cfg, "username from PAM = %s", username);
 
     if (cfg->domain != NULL) {
         kerberos_principal = extract_details(pamh, cfg->debug, "gssapi-with-mic");
@@ -168,7 +169,7 @@ char * get_user(pam_handle_t * pamh, const module_config *cfg)
 
     user_entry = pam_modutil_getpwnam(pamh, username);
     if (user_entry == NULL) {
-        pam_syslog(pamh, LOG_ERR, "Can't get passwd entry for '%s'", username);
+        ERR(pamh, "Can't get passwd entry for '%s'", username);
     }
 
     if (user_entry->pw_uid >= 1000) {

@@ -14,8 +14,7 @@
 #include <security/pam_ext.h>
 #include <security/pam_modutil.h>
 
-#define PAM_DEBUG
-#include <security/_pam_macros.h>
+#include "log.h"
 
 #include "ssh_user_auth.h"
 
@@ -37,14 +36,14 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
         if (strcmp(argv[i], "debug") == 0) {
             debug = 1;
         } else {
-            pam_syslog(pamh, LOG_ERR, "Invalid option for pam_ssh_user_auth: %s", argv[i]);
+            ERR(pamh, "Invalid option for pam_ssh_user_auth: %s", argv[i]);
             pam_error(pamh, "Sorry, Pam SSH_USER_AUTH is misconfigured, please contact admins!\n");
             return PAM_AUTH_ERR;
         }
     }
     if (debug) {
-        D(("pam_ssh_user_auth configuration:"));
-        D((" debug => %d", debug));
+        DBG(pamh, 1, "pam_ssh_user_auth configuration:");
+        DBG(pamh, 1, " debug => %d", debug);
     }
 
     ssh_user_auth = get_ssh_user_auth(pamh, debug);

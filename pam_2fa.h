@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <syslog.h>
 #include <unistd.h>
 #include <pwd.h>
 
@@ -21,14 +20,7 @@
 #include <security/pam_ext.h>
 #include <security/pam_modutil.h>
 
-#define PAM_DEBUG
-#include <security/_pam_macros.h>
-
-#ifdef DBG
-#undef DBG
-#endif
-#define DBG(x) if (cfg->debug) { D(x); }
-
+#include "log.h"
 
 typedef struct {
     int debug;
