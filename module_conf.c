@@ -11,8 +11,6 @@ static int raw_parse_option(pam_handle_t *pamh, const char* buf,
                             const char* opt_name_with_eq, char** dst);
 static int parse_str_option(pam_handle_t *pamh, const char* buf,
                             const char* opt_name_with_eq, char** dst);
-static int parse_uint_option(pam_handle_t *pamh, const char* buf,
-                             const char* opt_name_with_eq, unsigned int* dst);
 
 /// convenient function for freeing a string ans reset the pointer to 0
 void
@@ -85,29 +83,6 @@ int parse_str_option(pam_handle_t *pamh, const char* buf, const char* opt_name_w
         if (strdup_or_die(dst, buf+value_pos)) {
             return -1;
         }
-        return 1;
-    } else if (value_pos == -1) {
-      // Don't crash on duplicate, ignore 2nd value
-      return 1;
-    }
-    return value_pos;
-}
-
-/**
- * Handles the parsing of a given option with unsigned integer value.
- * @arg buf is the buffer to be parsed
- * @arg opt_name_with_eq is the option name we are looking for (including equal sign)
- * @arg dst is the destination for the value found if any.
- * returns 0 if the option was not found in the buffer
- * returns 1 if the option was found in buffer and parsed properly
- * returns -1 in case of error
- */
-int parse_uint_option(pam_handle_t *pamh, const char* buf,
-                      const char* opt_name_with_eq, unsigned int* dst)
-{
-  int value_pos = raw_parse_option(pamh, buf, opt_name_with_eq, 0);
-    if (value_pos > 0) {
-        sscanf(buf+value_pos, "%d", dst);
         return 1;
     } else if (value_pos == -1) {
       // Don't crash on duplicate, ignore 2nd value
