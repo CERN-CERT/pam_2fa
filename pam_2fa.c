@@ -35,12 +35,13 @@ static int do_authentication(pam_handle_t * pamh, module_config *cfg, const auth
 
 static int do_menu_actions(pam_handle_t * pamh, module_config *cfg, const auth_mod **available_mods, int menu_len, const char *username)
 {
+    int i;
     char *user_input;
     size_t user_input_len;
 
     if (menu_len > 1) {
         pam_info(pamh, "Login for %s:\n", username);
-        for (int i = 0; i < menu_len; ++i) {
+        for (i = 0; i < menu_len; ++i) {
             pam_info(pamh, "        %d. %s", i+1, available_mods[i]->name);
         }
 
@@ -55,7 +56,7 @@ static int do_menu_actions(pam_handle_t * pamh, module_config *cfg, const auth_m
         }
 
         user_input_len = strlen(user_input);
-        for (int i = 0; i < menu_len; ++i) {
+        for (i = 0; i < menu_len; ++i) {
             if (available_mods[i]->otp_len) {
                 if (user_input_len == available_mods[i]->otp_len) {
                     return do_authentication(pamh, cfg, available_mods[i], username, user_input);
