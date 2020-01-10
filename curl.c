@@ -113,7 +113,7 @@ CURLcode pam_curl_perform(struct pam_curl_state * state) {
     }
     return retval;
 fail:
-    return CURLE_AUTH_ERROR;
+    return CURLE_BAD_CALLING_ORDER;
 }
 
 /**
