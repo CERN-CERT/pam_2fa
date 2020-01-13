@@ -66,7 +66,7 @@ int yk_auth_func(pam_handle_t * pamh, module_config * cfg, const char* username,
     PAM_CURL_DO_OR_GOTO(state, add_header, clean_payload, "Content-Type: text/json");
     PAM_CURL_DO_OR_GOTO(state, set_option, clean_payload, CURLOPT_FAILONERROR, 1);
     PAM_CURL_DO_OR_GOTO(state, set_option, clean_payload, CURLOPT_WRITEFUNCTION, &curl_callback_copy);
-    PAM_CURL_DO_OR_GOTO(state, set_option, clean_payload, CURLOPT_WRITEDATA, &resp->buffer);
+    PAM_CURL_DO_OR_GOTO(state, set_option, clean_payload, CURLOPT_WRITEDATA, resp);
     PAM_CURL_DO_OR_GOTO(state, set_option, clean_payload, CURLOPT_URL, cfg->yk_uri);
     PAM_CURL_DO_OR_GOTO(state, set_option, clean_payload, CURLOPT_POSTFIELDS, payload);
 
