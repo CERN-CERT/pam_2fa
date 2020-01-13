@@ -5,17 +5,27 @@
 
 #include "ssh_user_auth.h"
 
+#ifdef RHEL7_COMPAT
+#define SSH_AUTH_INFO "SSH_USER_AUTH"
+#define TOKEN_SEPARATOR ","
+#define DETAIL_SEPARATOR_LEN 2
+#else /* !RHEL7_COMPAT */
+#define SSH_AUTH_INFO "SSH_AUTH_INFO_0"
+#define TOKEN_SEPARATOR "\n"
+#define DETAIL_SEPARATOR_LEN 1
+#endif /* RHEL7_COMPAT */
+
 const char * get_ssh_user_auth(pam_handle_t * pamh, int debug)
 {
     const char * ssh_user_auth;
 
-    ssh_user_auth = pam_getenv(pamh, "SSH_USER_AUTH");
+    ssh_user_auth = pam_getenv(pamh, SSH_AUTH_INFO);
     if (ssh_user_auth == NULL) {
-        DBG(pamh, debug, "no SSH_USER_AUTH");
+        DBG(pamh, debug, "no " SSH_AUTH_INFO);
         return NULL;
     }
     if (strlen(ssh_user_auth) == 0) {
-        DBG(pamh, debug, "empty SSH_USER_AUTH");
+        DBG(pamh, debug, "empty " SSH_AUTH_INFO);
         return NULL;
     }
     return ssh_user_auth;
@@ -37,21 +47,25 @@ char * extract_details(pam_handle_t * pamh, int debug, const char * method)
         return NULL;
     }
 
-    tok = strtok_r(my_ssh_user_auth, ",", &saveptr);
+    tok = strtok_r(my_ssh_user_auth, TOKEN_SEPARATOR, &saveptr);
     while (tok != NULL) {
         while (*tok == ' ')
             ++tok;
         if (strncmp(tok, method, method_len) == 0)
             break;
-        tok = strtok_r(NULL, ",", &saveptr);
+        tok = strtok_r(NULL, TOKEN_SEPARATOR, &saveptr);
     }
 
     if (tok != NULL) {
         tok += method_len;
+#ifdef RHEL7_COMPAT
         if (*tok != ':' || *(tok + 1) != ' ') {
-            DBG(pamh, debug, "empty details in SSH_USER_AUTH");
+#else /*! RHEL7_COMPAT */
+        if (*tok != ' ') {
+#endif /* ?RHEL7_COMPAT */
+            DBG(pamh, debug, "empty details in " SSH_AUTH_INFO);
         } else {
-            details = strdup(tok + 2);
+            details = strdup(tok + DETAIL_SEPARATOR_LEN);
             if (details == NULL) {
                 ERR(pamh, "SSH extract details: unable to strdup");
             }
