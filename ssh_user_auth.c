@@ -28,6 +28,7 @@ const char * get_ssh_user_auth(pam_handle_t * pamh, int debug)
         DBG(pamh, debug, "empty " SSH_AUTH_INFO);
         return NULL;
     }
+    DBG(pamh, debug, "SSH_AUTH_INFO_0 set to: %s", ssh_user_auth);
     return ssh_user_auth;
 }
 
