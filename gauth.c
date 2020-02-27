@@ -9,7 +9,7 @@ int gauth_auth_func (pam_handle_t * pamh, module_config * cfg, const char* usern
 
 const auth_mod gauth_auth = {
     .do_auth = &gauth_auth_func,
-    .name = "Google Authenticator",
+    .name = "Authenticator App",
     .prompt = "OTP: ",
     .otp_len = GAUTH_OTP_LEN,
 };
