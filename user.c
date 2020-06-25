@@ -17,21 +17,21 @@ static int open_trusted_file(pam_handle_t * pamh, const module_config *cfg, cons
     struct stat st;
 
     if (asprintf(&filename, "%s/%s", user->pw_dir, cfg->trusted_file) < 0) {
-        ERR(pamh, "Can't allocate filename buffer");
+        ERR_C(pamh, cfg, "Can't allocate filename buffer");
         return -1;
     }
 
     fd = open(filename, O_RDONLY);
     if(fd < 0) {
-        ERR(pamh, "Can't open file '%s'", filename);
+        ERR_sys(pamh, "Can't open file '%s'", filename);
         goto err;
     }
     if (fstat(fd, &st) < 0) {
-        ERR(pamh, "Can't get stats of file '%s'", filename);
+        ERR_C(pamh, cfg, "Can't get stats of file '%s'", filename);
         goto err_fd;
     }
     if (!S_ISREG(st.st_mode)) {
-        ERR(pamh, "Not a regular file '%s'", filename);
+        ERR_C(pamh, cfg, "Not a regular file '%s'", filename);
         goto err_fd;
     }
     free(filename);
@@ -51,7 +51,7 @@ static int cut_principal(pam_handle_t * pamh, const module_config *cfg, char *in
         *kerberos_domain = '\0';
         return 1;
     }
-    ERR(pamh, "Kerberos principal does not have expected domain, ignoring : '%s'", input);
+    ERR_sys(pamh, "Kerberos principal does not have expected domain, ignoring : '%s'", input);
     return 0;
 }
 
@@ -76,17 +76,19 @@ static int validate_real_user(pam_handle_t * pamh, const module_config *cfg, con
     ssize_t bytes_read;
     int retval = -1;
 
-    if (pam_2fa_drop_priv(pamh, &p, user) < 0) {
+    if (pam_2fa_drop_priv(pamh, cfg, &p, user) < 0) {
+        /* Errors already logged in pam_2fa_drop_priv */
         return -1;
     }
     fd = open_trusted_file(pamh, cfg, user);
     if (fd < 0) {
+        /* Errors already logged in open_trusted_file */
         goto clean;
     }
     
     buffer = (char*) calloc(BUFF_LEN, 1);
     if (buffer == NULL) {
-        ERR(pamh, "User switch: unable to allocate buffer to read trusted file");
+        ERR_C(pamh, cfg, "User switch: unable to allocate buffer to read trusted file");
         goto clean_fd;
     }
 
@@ -100,20 +102,22 @@ static int validate_real_user(pam_handle_t * pamh, const module_config *cfg, con
             ++buf_next_line;
             if (compare_user(pamh, cfg, username, buf_pos) > 0) {
                 retval = 1;
-                pam_syslog(pamh, LOG_INFO, "Authenticating '%s' as '%s' (validated from trusted file)", user->pw_name, username);
+                if (strcmp(username, user->pw_name)) {
+                    pam_syslog(pamh, LOG_INFO, "Authenticating '%s' as '%s' (validated from trusted file)", user->pw_name, username);
+                }
                 goto clean_buffer;
             }
             buf_pos = buf_next_line;
         }
         remaining = strlen(buf_pos);
         if (remaining > BUFF_LEN / 2) {
-            ERR(pamh, "Trusted file lines are too long!");
+            ERR_C(pamh, cfg, "Trusted file lines are too long!");
             goto clean_buffer;
         }
         memmove(buffer, buf_pos, remaining);
         buf_pos = buffer + remaining;
     }
-    ERR(pamh, "Got a non-trusted username for account '%s': '%s'", user->pw_name, username);
+    USER_ERR_C(pamh, cfg,  "'%s' is not trusted for account '%s'", username, user->pw_name);
 
 clean_buffer:
     free(buffer);
@@ -130,15 +134,15 @@ static char * get_real_user(pam_handle_t * pamh, const module_config *cfg, const
 
     pam_info(pamh, "You logged-in as the service account '%s', we need to know who you are for 2nd factor authentication", user->pw_name);
     if (pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &username, "login: ") != PAM_SUCCESS) {
-        ERR(pamh, "Unable to get real username for account '%s'", user->pw_name);
-        pam_error(pamh, "Unable to get user input");
+        USER_ERR_C(pamh, cfg, "Unable to get real username for account '%s'", user->pw_name);
         return NULL;
     }
     if (username == NULL) {
-        pam_error(pamh, "Invalid input");
+        USER_ERR_C(pamh, cfg, "Invalid input from user for account '%s'", user->pw_name);
         return NULL;
     }
     if (validate_real_user(pamh, cfg, user, username) < 0) {
+        /* Errors already logged in validate_real_user */
         free(username);
         return NULL;
     }
@@ -153,16 +157,18 @@ char * get_user(pam_handle_t * pamh, const module_config *cfg)
     struct passwd *user_entry;
     
     if (pam_get_item(pamh, PAM_USER, (const void **)&username) != PAM_SUCCESS) {
-        ERR(pamh, "Unable to retrieve username!");
+        ERR_C(pamh, cfg, "Unable to retrieve username!");
         return NULL;
     }
     DBG_C(pamh, cfg, "username from PAM = %s", username);
 
     if (cfg->domain != NULL) {
-        kerberos_principal = extract_details(pamh, cfg->debug, "gssapi-with-mic");
+        kerberos_principal = extract_details(pamh, cfg->debug, cfg->flags, "gssapi-with-mic");
         if (kerberos_principal != NULL) {
             if (cut_principal(pamh, cfg, kerberos_principal)) {
-                pam_syslog(pamh, LOG_INFO, "Authenticating '%s' as '%s' due to kerberos ticket", username, kerberos_principal);
+                if (strcmp(username, kerberos_principal)) {
+                    pam_syslog(pamh, LOG_INFO, "Authenticating '%s' as '%s' due to kerberos ticket", username, kerberos_principal);
+                }
                 /* Kerberos user: not a local system account */
                 return kerberos_principal;
             } else {
@@ -173,7 +179,7 @@ char * get_user(pam_handle_t * pamh, const module_config *cfg)
 
     user_entry = pam_modutil_getpwnam(pamh, username);
     if (user_entry == NULL) {
-        ERR(pamh, "Can't get passwd entry for '%s'", username);
+        ERR_C(pamh, cfg, "Can't get passwd entry for '%s'", username);
         return NULL;
     }
 

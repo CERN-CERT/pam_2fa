@@ -16,6 +16,7 @@ struct pam_curl_state {
     CURL *curlh;
     struct curl_slist *header_list;
     char curl_error[CURL_ERROR_SIZE];
+    int pam_flags;
 };
 
 void pam_curl_cleanup(struct pam_curl_state * state)
@@ -29,6 +30,8 @@ void pam_curl_cleanup(struct pam_curl_state * state)
     free(state);
 }
 
+#define ERR_CURL(state, ...) ERR(state->pamh, state->pam_flags, __VA_ARGS__)
+
 struct pam_curl_state* pam_curl_init(pam_handle_t * pamh, module_config * cfg)
 {
     struct pam_curl_state * state;
@@ -36,21 +39,22 @@ struct pam_curl_state* pam_curl_init(pam_handle_t * pamh, module_config * cfg)
 
     state = (struct pam_curl_state *) calloc(1, sizeof(struct pam_curl_state));
     if (state == NULL) {
-        ERR(pamh, "Out of memory, unable to allocate curl state");
+        ERR_C(pamh, cfg, "Out of memory, unable to allocate curl state");
         return state;
     }
 
     state->pamh = pamh;
+    state->pam_flags = cfg->flags;
     state->curlh = curl_easy_init();
     if (state->curlh == NULL) {
-        ERR(pamh, "curl_easy_init failed");
+        ERR_CURL(state, "curl_easy_init failed");
         free(state);
         return NULL;
     }
 
     retval = curl_easy_setopt(state->curlh, CURLOPT_ERRORBUFFER, state->curl_error);
     if (retval != CURLE_OK) {
-        ERR(pamh, "CURL: Unable to set error buffer");
+        ERR_CURL(state, "CURL: Unable to set error buffer");
         pam_curl_cleanup(state);
         return NULL;
     }
@@ -61,6 +65,7 @@ struct pam_curl_state* pam_curl_init(pam_handle_t * pamh, module_config * cfg)
 
     return state;
 fail:
+    /* Only triggered by PAM_CURL_DO_OR_GOTO on set_option, which is already logged */
     return NULL;
 }
 
@@ -82,7 +87,7 @@ int pam_curl_set_option(struct pam_curl_state * state, CURLoption option, ...)
     }
 
     if (retval != CURLE_OK) {
-        ERR(state->pamh, "Unable to set CURL options %i: %s", option,  state->curl_error);
+        ERR_CURL(state, "Unable to set CURL options %i: %s", option,  state->curl_error);
         return 0;
     }
     return 1;
@@ -94,12 +99,13 @@ int pam_curl_add_header(struct pam_curl_state * state, const char * header)
 
     tmp = curl_slist_append(state->header_list, header);
     if (tmp == NULL) {
-        ERR(state->pamh, "Unable to append header: %s", state->curl_error);
+        ERR_CURL(state, "Unable to append header: %s", state->curl_error);
         return 0;
     }
     state->header_list = tmp;
     return 1;
 }
+
 CURLcode pam_curl_perform(struct pam_curl_state * state) {
     CURLcode retval;
 
@@ -108,11 +114,19 @@ CURLcode pam_curl_perform(struct pam_curl_state * state) {
     }
 
     retval = curl_easy_perform(state->curlh);
-    if ((retval != CURLE_OK) && (retval != CURLE_HTTP_RETURNED_ERROR)) {
-        ERR(state->pamh, "Unable to perform CURL request: %u %s", retval, state->curl_error);
+    if (retval == CURLE_HTTP_RETURNED_ERROR) {
+        long response_code;
+        if (curl_easy_getinfo(state->curlh, CURLINFO_RESPONSE_CODE, &response_code) != CURLE_OK) {
+            ERR_CURL(state, "Unable to get CURL response code");
+        } else if (response_code >= 500) {
+            ERR_CURL(state, "CURL: Server error (%li)", response_code);
+        }
+    } else if (retval != CURLE_OK) {
+        ERR_CURL(state, "Unable to perform CURL request: %u %s", retval, state->curl_error);
     }
     return retval;
 fail:
+    /* Only triggered by PAM_CURL_DO_OR_GOTO on set_option, which is already logged */
     return CURLE_BAD_CALLING_ORDER;
 }
 

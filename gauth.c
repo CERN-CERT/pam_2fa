@@ -40,31 +40,31 @@ int gauth_auth_func (pam_handle_t * pamh, module_config * cfg, const char* usern
     int return_value = PAM_AUTH_ERR;
 
     if (!valid_otp(pamh, cfg, otp)) {
+        USER_ERR_C(pamh, cfg, "Invalid OTP provided by user");
         return PAM_AUTH_ERR;
     }
 
     state = pam_curl_init(pamh, cfg);
     if (state == NULL ) {
+        /* Errors already logged in pam_curl_init */
         return PAM_AUTH_ERR;
     }
 
+    /* add_header and set_option already log errors */
     PAM_CURL_DO_OR_GOTO(state, add_header, clean, "Content-Type: text/plain");
     PAM_CURL_DO_OR_GOTO(state, set_option, clean, CURLOPT_FAILONERROR, 1);
     PAM_CURL_DO_OR_GOTO(state, set_option, clean, CURLOPT_WRITEFUNCTION, &curl_callback_ignore);
     PAM_CURL_DO_OR_GOTO(state, set_option, clean, CURLOPT_WRITEDATA, &ignore_data);
 
     if (asprintf(&uri, "%s/%s/%s", cfg->gauth_uri_prefix, username, cfg->gauth_uri_suffix) < 0) {
-        ERR(pamh, "Gauth: unable to allocate URI");
+        ERR_C(pamh, cfg, "Gauth: unable to allocate URI");
         goto clean;
     }
     PAM_CURL_DO_OR_GOTO(state, set_option, clean_uri, CURLOPT_URL, uri);
     PAM_CURL_DO_OR_GOTO(state, set_option, clean_uri, CURLOPT_POSTFIELDS, otp);
 
-    CURLcode perform_retval = pam_curl_perform(state);
-    if (perform_retval == CURLE_OK) {
+    if (pam_curl_perform(state) == CURLE_OK) {
         return_value = PAM_SUCCESS;
-    } else if (perform_retval == CURLE_HTTP_RETURNED_ERROR) {
-        DBG_C(pamh, cfg, "Gauth: Invalid OTP");
     }
 clean_uri:
     free(uri);

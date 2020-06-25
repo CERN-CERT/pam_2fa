@@ -46,23 +46,26 @@ int yk_auth_func(pam_handle_t * pamh, module_config * cfg, const char* username,
     DBG_C(pamh, cfg, "Yubikey = %s", otp);
 
     if (!valid_otp(pamh, cfg, otp)) {
+        USER_ERR_C(pamh, cfg, "Invalid OTP provided by user");
         return PAM_AUTH_ERR;
     }
 
     state = pam_curl_init(pamh, cfg);
     if (state == NULL) {
+        /* Errors already logged in pam_curl_init */
         return 0;
     }
     resp = (struct curl_response*) calloc(1, sizeof(struct curl_response));
     if (resp == NULL) {
-        ERR(pamh, "Yubikey: unable to allocate buffer for curl response");
+        ERR_C(pamh, cfg, "Yubikey: unable to allocate buffer for curl response");
         goto clean_state;
     }
     if (asprintf(&payload, yk_association_request, username, otp) < 0) {
-        ERR(pamh, "Yubikey: unable to allocate buffer for curl payload");
+        ERR_C(pamh, cfg, "Yubikey: unable to allocate buffer for curl payload");
         goto clean_resp;
     }
 
+    /* add_header and set_option already log errors */
     PAM_CURL_DO_OR_GOTO(state, add_header, clean_payload, "Content-Type: text/json");
     PAM_CURL_DO_OR_GOTO(state, set_option, clean_payload, CURLOPT_FAILONERROR, 1);
     PAM_CURL_DO_OR_GOTO(state, set_option, clean_payload, CURLOPT_WRITEFUNCTION, &curl_callback_copy);
@@ -70,10 +73,7 @@ int yk_auth_func(pam_handle_t * pamh, module_config * cfg, const char* username,
     PAM_CURL_DO_OR_GOTO(state, set_option, clean_payload, CURLOPT_URL, cfg->yk_uri);
     PAM_CURL_DO_OR_GOTO(state, set_option, clean_payload, CURLOPT_POSTFIELDS, payload);
 
-    if (pam_curl_perform(state) != CURLE_OK) {
-        goto clean_payload;
-    }
-    if (strcmp(yk_association_ok, resp->buffer) == 0) {
+    if (pam_curl_perform(state) == CURLE_OK && strcmp(yk_association_ok, resp->buffer) == 0) {
         return_value = PAM_SUCCESS;
     }
 clean_payload:

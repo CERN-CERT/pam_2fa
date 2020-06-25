@@ -55,7 +55,7 @@ int raw_parse_option(pam_handle_t *pamh, const char* buf, const char* opt_name_w
     size_t opt_len = strlen(opt_name_with_eq);
     if (0 == strncmp(buf, opt_name_with_eq, opt_len)) {
         if (dst && *dst) {
-            ERR(pamh,
+            ERR(pamh, 0,
                 "Duplicated option : %s. Only first one is taken into account",
                 opt_name_with_eq);
             return -1;
@@ -92,7 +92,7 @@ int parse_str_option(pam_handle_t *pamh, const char* buf, const char* opt_name_w
 }
 
 module_config *
-parse_config(pam_handle_t *pamh, int argc, const char **argv)
+parse_config(pam_handle_t *pamh, int argc, const char **argv, int flags)
 {
     module_config *cfg = NULL;
     int mem_error = 0;
@@ -100,9 +100,10 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv)
 
     cfg = (module_config *) calloc(1, sizeof(module_config));
     if (!cfg) {
-        ERR(pamh, "Out of memory, unable to allocate configuration");
+        ERR(pamh, flags, "Out of memory, unable to allocate configuration");
         return NULL;
     }
+    cfg->flags = flags;
 
     for (i = 0; i < argc; ++i) {
         int retval = !strcmp(argv[i], "debug");
@@ -115,7 +116,7 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv)
         if (retval == 0) retval = parse_str_option(pamh, argv[i], "trusted_file=", &cfg->domain);
 
         if (0 == retval) {
-            ERR(pamh, "Invalid configuration option: %s", argv[i]);
+            ERR(pamh, flags, "Invalid configuration option: %s", argv[i]);
             free_config(cfg);
             return NULL;
         } else if (retval < 0) {
@@ -130,7 +131,7 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv)
 
     // in case we got a memory error in the previous code, give up immediately
     if (mem_error) {
-        ERR(pamh, "Out of memory, unable to parse configuration");
+        ERR(pamh, flags, "Out of memory, unable to parse configuration");
         free_config(cfg);
         return NULL;
     }
@@ -142,6 +143,7 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv)
 
     if (cfg->debug) {
         DBG(pamh, 1, "debug => %d",           cfg->debug);
+        DBG(pamh, 1, "flags => %i",           cfg->flags);
         DBG(pamh, 1, "capath => %s",          cfg->capath);
         DBG(pamh, 1, "gauth_enabled => %i",   cfg->gauth_enabled);
         DBG(pamh, 1, "gauth_uri_prefix => %s",cfg->gauth_uri_prefix);
@@ -153,7 +155,7 @@ parse_config(pam_handle_t *pamh, int argc, const char **argv)
     }
 
     if (!cfg->gauth_enabled && !cfg->yk_enabled) {
-        ERR(pamh, "No configured 2nd factors");
+        ERR(pamh, flags, "No configured 2nd factors");
         free_config(cfg);
         return NULL;
     }

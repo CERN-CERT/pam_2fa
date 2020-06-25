@@ -38,10 +38,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
         if (strcmp(argv[i], "debug") == 0) {
             debug = 1;
         } else {
-            ERR(pamh, "Invalid option for pam_ssh_user_auth: %s", argv[i]);
-            if (!(PAM_SILENT & (unsigned int) flags)) {
-                pam_error(pamh, "Sorry, Pam SSH_USER_AUTH is misconfigured, please contact admins!\n");
-            }
+            ERR(pamh, flags, "Invalid option for pam_ssh_user_auth: %s", argv[i]);
             return PAM_AUTH_ERR;
         }
     }

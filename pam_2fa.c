@@ -18,12 +18,11 @@ static int do_authentication(pam_handle_t * pamh, module_config *cfg, const auth
 
     if (user_input == NULL) {
         if (pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &user_input, "%s", selected_auth_mod->prompt) != PAM_SUCCESS) {
-            pam_syslog(pamh, LOG_INFO, "Unable to get %s", selected_auth_mod->prompt);
-            pam_error(pamh, "Unable to get user input");
+            USER_ERR_C(pamh, cfg, "Unable to get user input (%s)", selected_auth_mod->prompt);
             return PAM_AUTH_ERR;
         }
         if (user_input == NULL) {
-            pam_error(pamh, "Invalid input");
+            USER_ERR_C(pamh, cfg, "Invalid input received from user (%s)", selected_auth_mod->prompt);
             return PAM_AUTH_ERR;
         }
     }
@@ -46,12 +45,11 @@ static int do_menu_actions(pam_handle_t * pamh, module_config *cfg, const auth_m
         }
 
         if (pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &user_input, "\nOption (1-%d): ", menu_len) != PAM_SUCCESS) {
-            pam_syslog(pamh, LOG_INFO, "Unable to get 2nd factors for user '%s'", username);
-            pam_error(pamh, "Unable to get user input");
+            USER_ERR_C(pamh, cfg, "Unable to get 2nd factors");
             return PAM_AUTH_ERR;
         }
         if (user_input == NULL) {
-            pam_error(pamh, "Invalid input");
+            USER_ERR_C(pamh, cfg, "Invalid input from user");
             return PAM_AUTH_ERR;
         }
 
@@ -70,22 +68,21 @@ static int do_menu_actions(pam_handle_t * pamh, module_config *cfg, const auth_m
             free(user_input);
             return do_authentication(pamh, cfg, selected_auth_mod, username, NULL);
         } else {
-            pam_error(pamh, "Invalid input");
+            USER_ERR_C(pamh, cfg, "Invalid menu option from user");
             free(user_input);
             return PAM_AUTH_ERR;
         }
     } else if (menu_len == 1) {
         return do_authentication(pamh, cfg, available_mods[0], username, NULL);
     } else {
-        pam_syslog(pamh, LOG_INFO, "No supported 2nd factor for user '%s'", username);
-        pam_error(pamh, "No supported 2nd factors for user '%s'", username);
+        USER_ERR_C(pamh, cfg, "No supported 2nd factor for user '%s'", username);
         return PAM_AUTH_ERR;
     }
 }
 
 // CALLED BY PAM_AUTHENTICATE
 PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh,
-                                   __attribute__((unused)) int flags, /* TODO: We should honor PAM_SILENT somehow */
+                                   int flags,
                                    int argc, const char **argv)
 {
     module_config *cfg = NULL;
@@ -94,10 +91,9 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh,
     const char *authtok;
     int final_return = PAM_AUTH_ERR;
 
-    cfg = parse_config(pamh, argc, argv);
+    cfg = parse_config(pamh, argc, argv, flags);
     if (cfg == NULL) {
-        ERR(pamh, "Invalid parameters to pam_2fa module");
-        pam_error(pamh, "Sorry, 2FA Pam Module is misconfigured, please contact admins!\n");
+        /* Errors already logged in parse_config */
         return PAM_AUTH_ERR;
     }
 
@@ -110,6 +106,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh,
     // Get User
     username = get_user(pamh, cfg);
     if (!username) {
+        /* Errors already logged in get_user */
         goto clean_cfg;
     }
 

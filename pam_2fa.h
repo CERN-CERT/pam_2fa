@@ -24,6 +24,7 @@
 
 typedef struct {
     int debug;
+    int flags;
     char *capath;
     int gauth_enabled;
     char *gauth_uri_prefix;
@@ -64,12 +65,12 @@ typedef struct {
 #define GAUTH_OTP_LEN 6
 #define YK_OTP_LEN 44
 
-module_config * parse_config(pam_handle_t *pamh, int argc, const char **argv);
+module_config * parse_config(pam_handle_t *pamh, int argc, const char **argv, int flags);
 void free_config(module_config *cfg);
 
 char * get_user(pam_handle_t * pamh, const module_config *cfg);
 
-int pam_2fa_drop_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struct passwd *pw);
+int pam_2fa_drop_priv(pam_handle_t *pamh, const module_config * cfg, struct pam_2fa_privs *p, const struct passwd *pw);
 int pam_2fa_regain_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struct passwd *pw);
 
 extern const auth_mod gauth_auth;
