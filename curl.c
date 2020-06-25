@@ -66,6 +66,7 @@ struct pam_curl_state* pam_curl_init(pam_handle_t * pamh, module_config * cfg)
     return state;
 fail:
     /* Only triggered by PAM_CURL_DO_OR_GOTO on set_option, which is already logged */
+    pam_curl_cleanup(state);
     return NULL;
 }
 
