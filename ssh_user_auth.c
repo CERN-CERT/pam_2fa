@@ -32,7 +32,7 @@ const char * get_ssh_user_auth(pam_handle_t * pamh, int debug)
     return ssh_user_auth;
 }
 
-char * extract_details(pam_handle_t * pamh, int debug, const char * method)
+char * extract_details(pam_handle_t * pamh, int debug, int flags, const char * method)
 {
     char *my_ssh_user_auth, *tok, *saveptr;
     char *details = NULL;
@@ -44,7 +44,7 @@ char * extract_details(pam_handle_t * pamh, int debug, const char * method)
 
     my_ssh_user_auth = strdup(ssh_user_auth);
     if (my_ssh_user_auth == NULL) {
-        ERR(pamh, "SSH extract details: unable to strdup");
+        ERR(pamh, flags, "SSH extract details: unable to strdup");
         return NULL;
     }
 
@@ -68,7 +68,7 @@ char * extract_details(pam_handle_t * pamh, int debug, const char * method)
         } else {
             details = strdup(tok + DETAIL_SEPARATOR_LEN);
             if (details == NULL) {
-                ERR(pamh, "SSH extract details: unable to strdup");
+                ERR(pamh, flags, "SSH extract details: unable to strdup");
             }
         }
     }

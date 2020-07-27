@@ -39,7 +39,7 @@ static void cleanup(struct pam_2fa_privs *p)
 #define PRIV_MAGIC            0x1004000a
 #define PRIV_MAGIC_DONOTHING  0xdead000a
 
-int pam_2fa_drop_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struct passwd *pw)
+int pam_2fa_drop_priv(pam_handle_t *pamh, const module_config * cfg, struct pam_2fa_privs *p, const struct passwd *pw)
 {
     int res;
     memset(p, 0, sizeof(struct pam_2fa_privs));
@@ -56,20 +56,20 @@ int pam_2fa_drop_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struct 
 
     res = getgroups(0, NULL);
     if (res < 0) {
-        ERR(pamh, "pam_2fa_drop_priv: getgroups failed: %m");
+        ERR_C(pamh, cfg, "pam_2fa_drop_priv: getgroups failed: %m");
         return -1;
     }
 
     p->grplist = (gid_t *) calloc((size_t) res, sizeof(gid_t));
     if (!p->grplist) {
-        ERR(pamh, "out of memory");
+        ERR_C(pamh, cfg, "out of memory");
         return -1;
     }
     p->nbgrps = res;
 
     res = getgroups(p->nbgrps, p->grplist);
     if (res < 0) {
-        ERR(pamh, "pam_2fa_drop_priv: getgroups failed: %m");
+        ERR_C(pamh, cfg, "pam_2fa_drop_priv: getgroups failed: %m");
         cleanup(p);
         return -1;
     }
@@ -80,18 +80,18 @@ int pam_2fa_drop_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struct 
      * we should try to restore old gid.
      */
     if (setgroups(0, NULL)) {
-        ERR(pamh, "pam_2fa_drop_priv: setgroups failed: %m");
+        ERR_C(pamh, cfg, "pam_2fa_drop_priv: setgroups failed: %m");
         cleanup(p);
         return -1;
     }
     if (change_gid(pw->pw_gid, &p->old_gid)) {
-        ERR(pamh, "pam_2fa_drop_priv: change_gid failed: %m");
+        ERR_C(pamh, cfg, "pam_2fa_drop_priv: change_gid failed: %m");
         (void) setgroups((size_t) p->nbgrps, p->grplist);
         cleanup(p);
         return -1;
     }
     if (change_uid(pw->pw_uid, &p->old_uid)) {
-        ERR(pamh, "pam_2fa_drop_priv: change_uid failed: %m");
+        ERR_C(pamh, cfg, "pam_2fa_drop_priv: change_uid failed: %m");
         (void) change_gid(p->old_gid, NULL);
         (void) setgroups((size_t) p->nbgrps, p->grplist);
         cleanup(p);
@@ -113,7 +113,7 @@ int pam_2fa_regain_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struc
             break;
 
         default:
-            ERR(pamh, "pam_2fa_regain_priv: called with invalid state");
+            ERR_sys(pamh, "pam_2fa_regain_priv: called with invalid state");
             return -1;
         }
 
@@ -123,18 +123,18 @@ int pam_2fa_regain_priv(pam_handle_t *pamh, struct pam_2fa_privs *p, const struc
      * we should try to restore uid.
      */
     if (change_uid(p->old_uid, NULL)) {
-        ERR(pamh, "pam_2fa_regain_priv: change_uid failed: %m");
+        ERR_sys(pamh, "pam_2fa_regain_priv: change_uid failed: %m");
         cleanup(p);
         return -1;
     }
     if (change_gid(p->old_gid, NULL)) {
-        ERR(pamh, "pam_2fa_regain_priv: change_gid failed: %m");
+        ERR_sys(pamh, "pam_2fa_regain_priv: change_gid failed: %m");
         (void)change_uid(pw->pw_uid, NULL);
         cleanup(p);
         return -1;
     }
     if (setgroups((size_t) p->nbgrps, p->grplist)) {
-        ERR(pamh, "pam_2fa_regain_priv: setgroups failed: %m");
+        ERR_sys(pamh, "pam_2fa_regain_priv: setgroups failed: %m");
         (void)change_uid(pw->pw_uid, NULL);
         (void)change_gid(pw->pw_gid, NULL);
         cleanup(p);
