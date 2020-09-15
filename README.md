@@ -72,3 +72,7 @@ Yubikeys are validated via a POST on `${yk_uri}` with the following post data (i
 }
 ```
 It expects the raw string 'true' for valid OTPs and anything else for invalid ones
+
+## Previous implementation
+
+For a previous implementation of this module, using a LDAP and different endpoint, please refer to the [v1.x branch](https://github.com/CERN-CERT/pam_2fa/tree/v1.x)
